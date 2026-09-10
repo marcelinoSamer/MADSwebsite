@@ -6,8 +6,8 @@ describe('JoinCta', () => {
   it('renders the call-to-action heading and join link', () => {
     render(<JoinCta />)
     expect(
-      screen.getByRole('heading', { name: /ready to be part of it/i })
+      screen.getByRole('heading', { name: /ready to solve for you/i })
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /join now/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /count me in/i })).toBeInTheDocument()
   })
 })

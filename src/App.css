@@ -269,3 +269,67 @@ body {
   .hero h1 { font-size: 38px; }
   .cta-band { flex-direction: column; text-align: center; }
 }
+
+html { scroll-behavior: smooth; }
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 44px;
+}
+.team-card {
+  text-align: center;
+  background: var(--off-white);
+  border: 1px solid var(--neutral);
+  border-radius: 14px;
+  padding: 28px 20px;
+}
+.avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--off-white);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0 auto 16px;
+}
+.team-card h3 { font-family: var(--font-title); font-size: 16px; margin: 0 0 4px; }
+.team-role { font-size: 13px; color: #3d5566; margin: 0 0 14px; }
+.team-contact-links { display: flex; justify-content: center; gap: 16px; }
+.team-contact-links a { font-size: 13px; color: var(--purple); text-decoration: none; }
+.team-contact-links a:hover { text-decoration: underline; }
+
+.join-form {
+  margin-top: 40px;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13.5px; font-weight: 500; color: var(--navy); }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  border: 1px solid var(--neutral);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--navy);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: 2px solid var(--blue-accent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 860px) {
+  .team-grid { grid-template-columns: repeat(2, 1fr); }
+}
