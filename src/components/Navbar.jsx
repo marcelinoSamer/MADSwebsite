@@ -15,9 +15,9 @@ function Navbar() {
           <li><a href="#about">About</a></li>
           <li><a href="#pillars">What we do</a></li>
           <li><a href="#activities">Activities</a></li>
-          <li><a href="#join">Join</a></li>
+          <li><a href="#contact">Contact Us</a></li>
         </ul>
-        <a className="btn btn-primary" href="#join">Join MADS</a>
+        <a className="btn btn-primary" href="#join-form">Join MADS</a>
       </div>
     </header>
   )

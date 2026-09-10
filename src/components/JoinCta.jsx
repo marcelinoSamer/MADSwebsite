@@ -4,10 +4,10 @@ function JoinCta() {
       <div className="container">
         <div className="cta-band">
           <div>
-            <h2>Ready to be part of it?</h2>
-            <p>Join the MADS community and be first to hear about events.</p>
+            <h2>Ready to solve for you?</h2>
+            <p>Join MADS and become part of the equation.</p>
           </div>
-          <a className="btn btn-on-navy" href="#">Join now</a>
+          <a className="btn btn-on-navy" href="#join-form">Count me in</a>
         </div>
       </div>
     </section>
