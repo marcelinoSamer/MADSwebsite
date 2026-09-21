@@ -41,7 +41,9 @@ CI (`.github/workflows/ci.yml`) runs `npm ci && npm test && npm run build` on ev
 
 The backend is a **managed Supabase project** — Postgres, Auth, Storage, RLS — not a server app in this repo. The reasoning, which should survive: the association loses its whole dev team every couple of years, so a VPS someone must patch and back up is a bus-factor event at every graduation; the feature set is ~90% CRUD plus file storage; and granular authorization belongs in RLS, where a forgotten route guard cannot bypass it.
 
-The project is **live**: `mads` in `eu-central-1`, deployed to two Vercel projects (`mads-site`, `mads-admin`) connected to this repo. Schema and policies are in `supabase/migrations/`, applied through the Management API (see README) — there is no Supabase CLI here.
+The project is **live**: `mads` in `eu-central-1`, deployed to two Vercel projects (`mads-site`, `mads-admin`). Schema and policies are in `supabase/migrations/`, applied through the Management API (see README) — there is no Supabase CLI here.
+
+Vercel's own Git integration is **not** connected: linking a repo needs an interactive GitHub OAuth connection on the Vercel account, which an API token cannot create. Deployment runs from `.github/workflows/ci.yml` instead, gated on the test job. If someone later connects the repo in the Vercel dashboard, delete the `deploy` job — otherwise every push deploys twice.
 
 **Authorization is RLS, not client code.** `has_permission(perm)` is a `security definer` helper that joins `profiles → roles`; every policy calls it with the same strings as `permissions.js`. Two things worth knowing before editing policies:
 
