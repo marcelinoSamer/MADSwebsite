@@ -114,7 +114,9 @@ Voice, if you touch copy: warm but professional; dates, deadlines, and links iso
 
 Routes: `/` (Landing) · `/blog` · `/blog/:slug` · `/syllabi` · `/forms/:slug` · `*`. **Landing is eager; every other route is `lazy()`.** react-markdown is most of the JS on this site and a visitor who only sees the homepage should not download it — don't un-split them.
 
-`pages/Landing.jsx` holds the original section composition: `Hero`/`About`/`Pillars`/`Activities`/`JoinCta`. Section components are still props-less and state-less.
+`pages/Landing.jsx` holds the original section composition: `Hero`/`About`/`Pillars`/`Activities`/`JoinCta`. Section components take no props; all but `Hero` and `JoinCta` are also state-less — those two mount `NewsletterSignup`.
+
+**The hero is a directory, not a pitch.** Centred, deliberately small type — the title is set near an `h2` so the marks behind it (watermark, circles, curve) carry the image — then the two archives as a ruled two-up row, then the sign-up form. It has no slogan and no CTA buttons: this is a service site for an association the campus already knows, so the hero's job is to hand over what a visitor came for without scrolling. `NewsletterSignup` therefore renders **twice** on the landing page, which is why its field ids come from `useId` rather than literals.
 
 Three shared pieces are not sections:
 
