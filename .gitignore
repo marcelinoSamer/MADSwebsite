@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Secrets. .env holds live Vercel/Supabase tokens and the seeded account
+# passwords — it must never be committed. .env.example documents the shape.
+.env
+.env.*
+!.env.example
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

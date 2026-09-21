@@ -1,20 +1,25 @@
 {
-  "name": "madswebsite",
+  "name": "mads",
   "private": true,
   "version": "0.0.0",
   "type": "module",
- "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "lint": "oxlint",
-  "preview": "vite preview",
-  "test": "vitest run",
-  "test:watch": "vitest",
-  "test:coverage": "vitest run --coverage"
-},
-  "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n site,admin -c cyan,magenta --kill-others-on-fail \"npm:dev:site\" \"npm:dev:admin\"",
+    "dev:site": "npm run dev -w @mads/site",
+    "dev:admin": "npm run dev -w @mads/admin",
+    "build": "npm run build --workspaces --if-present",
+    "preview": "npm run preview -w @mads/site",
+    "preview:admin": "npm run preview -w @mads/admin",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "db:seed": "node scripts/seed-supabase.mjs",
+    "db:verify": "node scripts/verify-supabase.mjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
@@ -24,6 +29,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^4.1.11",
+    "concurrently": "^10.0.5",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
     "oxlint": "^1.75.0",

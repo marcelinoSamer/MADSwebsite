@@ -1,46 +1,111 @@
-# Contributing to MADSwebsite
+# Contributing to MADS
 
 ## Getting started
 
+```bash
 npm install
-npm run dev
+npm run dev          # both apps, prefixed [site] / [admin]
+#   site  → http://localhost:5173
+#   admin → http://localhost:5174
 
+npm run dev:site     # just one of them
+npm run dev:admin
+```
 
-Runs the site locally at `http://localhost:5173` with hot reload.
+Ports are strict: a clash fails the command instead of silently moving the app
+to another port, which otherwise leaves you testing the wrong one.
+
+This is an npm workspace. Install once at the root — never inside `apps/*` or
+`packages/*`. To add a dependency to one app:
+
+```bash
+npm i some-package -w @mads/site
+```
+
+Shared tooling (vitest, testing-library, oxlint, vite) lives in the root
+`package.json` so every workspace uses the same version.
 
 ## Running tests
 
-npm test # run the full test suite once
-npm run test:watch # re-run tests automatically as you edit files
-npm run test:coverage # run tests and generate a coverage report
+```bash
+npm test               # every workspace, once — what CI runs
+npm run test:watch
+npm run test:coverage
 
+npx vitest run --project site     # one workspace
+npx vitest run --project admin
+npx vitest run --project db
 
-Tests run automatically on every Pull Request via GitHub Actions — a PR cannot be merged if any test fails.
+npx vitest run apps/site/src/components/Navbar.test.jsx   # one file
+npx vitest run -t "renders a link"                        # one test by name
+```
+
+Tests and the production build both run on every PR via GitHub Actions. A PR
+cannot be merged if either fails.
 
 ## Writing tests
 
-- Every component's test file lives next to it: `Component.jsx` → `Component.test.jsx` (colocated), not in a separate top-level `tests/` folder.
-- We use [Vitest](https://vitest.dev/) as the test runner and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) to render and query components.
-- **Query by role and accessible name first** — how a real user (or screen reader) would identify the element — not by CSS class or a test-only ID. Use `getByText` only when no element role fits (e.g. plain paragraph text with no semantic role).
-- Snapshot tests are discouraged — they pass silently and get blindly regenerated on failure rather than catching real regressions.
+- Test files live next to what they test: `Component.jsx` → `Component.test.jsx`.
+- **Query by role and accessible name** — how a real user or a screen reader
+  would find the element — not by CSS class or a test-only id. Fall back to
+  `getByText` only for content with no semantic role.
+- Snapshot tests are discouraged. They pass silently and get regenerated on
+  failure rather than catching regressions.
 
-### Reference example
+### Rendering components
 
-See `src/components/Navbar.test.jsx` for the standard pattern:
+Neither app's components work standalone: they need a router and a data client.
+Each app has a helper for that.
 
 ```jsx
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import Navbar from './Navbar'
+// apps/site
+import { renderWithProviders } from '../test/renderWithProviders'
 
-describe('Navbar', () => {
-  it('renders a link to each main section', () => {
-    render(<Navbar />)
-    expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument()
-  })
-})
+renderWithProviders(<Blog />)
+renderWithProviders(<App />, { route: '/blog/some-slug' })
 ```
 
-## Mocking network requests
+```jsx
+// apps/admin — most of it is unreachable signed out, so tests pick a role
+import { renderAs, AS } from '../test/renderWithProviders'
 
-Any component that fetches data should use [MSW](https://mswjs.io/) handlers defined in `src/mocks/handlers.js`, rather than mocking the fetch/axios call directly in the test file.
+await renderAs(AS.writer, <App />, { route: '/posts' })
+```
+
+Every call gets a **fresh in-memory adapter**, seeded from
+`packages/db/src/seed.js`. Tests never share state and never need to reset one.
+The helper returns the client, so you can assert on what was actually stored
+rather than only on what the UI said:
+
+```jsx
+const { client } = renderWithProviders(<JoinCta />)
+// …interact…
+const subscribers = await client.subscribers.list()
+```
+
+To test an empty or unusual state, pass a modified seed:
+
+```jsx
+const seed = createSeed()
+seed.posts = []
+renderWithProviders(<Blog />, { client: createMockAdapter({ seed }) })
+```
+
+### Permissions
+
+The mock adapter enforces permissions the way RLS will. A test that signs in as
+`AS.writer` and expects to publish a post **should** fail — that is the point.
+When adding an admin feature, add a test for the role that must not have it.
+
+### Network mocking
+
+There is none, and there should not be. Components talk to `packages/db`, not to
+`fetch`. Swap the adapter or the seed instead. MSW is still a dependency for the
+day something genuinely calls an outside API.
+
+## Style
+
+- `npm run lint` (oxlint). Warnings are tolerated; errors are not.
+- No TypeScript. The data shapes are documented in `packages/db/src/seed.js`.
+- CSS is hand-written and class-based — no CSS modules, no utility classes in
+  JSX. See `CLAUDE.md` for where each stylesheet's boundaries are.

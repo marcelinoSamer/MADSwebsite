@@ -13,5 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm ci
       - run: npm test
+      # Both apps have to build. A test suite passing while the production
+      # bundle is broken is the failure mode this catches.
+      - run: npm run build

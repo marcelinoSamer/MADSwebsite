@@ -1,0 +1,60 @@
+/* Document-level reset and base. Brand tokens, type, and component styles
+   all live in App.css. */
+
+:root {
+  /* The site is navy-dominant per the brand guide, so it is a dark UI
+     regardless of system preference — form controls and scrollbars should
+     match rather than flip to a light scheme. */
+  color-scheme: dark;
+  font-family: "Garet", "Jost", "Century Gothic", "Avenir Next", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Anchored sections clear the sticky nav. */
+  scroll-padding-top: 96px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}

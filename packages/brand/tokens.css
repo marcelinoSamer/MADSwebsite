@@ -1,0 +1,96 @@
+/* =========================================================================
+   MADS — brand tokens
+   The single source for colour, type, and easing, shared by every app.
+
+   This used to live at the top of the site's App.css. It moved here when the
+   admin panel became a second build: two apps each holding their own copy of
+   the palette drift apart, and the brand guide is the authority for both.
+
+   Values come from MADS_Brand_Voice_Guide.pdf (2026–2027). The guide fixes
+   *where* each colour is used as much as what it is — see the notes below
+   before reaching for one.
+   ========================================================================= */
+
+/* --- Brand fonts -------------------------------------------------------- */
+
+/* Telegraf (titles) and Garet (body) are the brand faces. Both are
+   commercially licensed and have no public CDN, so they are self-hosted.
+   Drop the licensed .woff2 files into an app's public/fonts/ and they take
+   over automatically; until then the stack falls through to the substitutes
+   loaded in that app's index.html (Archivo ≈ Telegraf's wide grotesque,
+   Jost ≈ Garet's geometric sans). The unresolved-path warning at build time
+   is expected until those files land. */
+
+@font-face {
+  font-family: "Telegraf";
+  src: url("/fonts/Telegraf-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Telegraf";
+  src: url("/fonts/Telegraf-Semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Garet";
+  src: url("/fonts/Garet-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Garet";
+  src: url("/fonts/Garet-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* --- Tokens ------------------------------------------------------------- */
+
+:root {
+  /* Brand colours — exact values from the guide. */
+  --navy: #0a3b5e;
+  --purple: #ae67b7;
+  --purple-soft: #bb85ce;
+  --blue: #4682b4;
+  --blue-accent: #6ea0cf;
+  --neutral: #e4e2dd;
+  --off-white: #fefefe;
+
+  /* Navy shades, for layering sections without leaving the primary. */
+  --navy-deep: #072c46;
+  --navy-deepest: #051f33;
+  --navy-lift: #0e4670;
+
+  /* Text. Off-white carries body copy; purple-soft is the lightest tint
+     that still clears AA Large on navy, so accents use it rather than
+     primary purple — primary purple on navy is 2.9:1 and must never carry
+     small text. It is for bars, rules, and strokes only. */
+  --text: var(--off-white);
+  --text-muted: color-mix(in srgb, var(--off-white) 68%, transparent);
+  --text-faint: color-mix(in srgb, var(--off-white) 46%, transparent);
+  --rule: color-mix(in srgb, var(--off-white) 14%, transparent);
+  --rule-strong: color-mix(in srgb, var(--off-white) 28%, transparent);
+
+  /* Status colours. Not in the guide — it has no error state — so these are
+     derived to sit beside the palette rather than fight it. */
+  --danger: #e2879a;
+  --success: #7fc6a4;
+
+  --display: "Telegraf", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Garet", "Jost", "Century Gothic", "Avenir Next", sans-serif;
+
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --measure: 1240px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-ink: cubic-bezier(0.65, 0, 0.35, 1);
+}

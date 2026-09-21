@@ -1,0 +1,786 @@
+@import "@mads/brand/tokens.css";
+
+/* =========================================================================
+   MADS — admin panel
+
+   Same palette as the public site, different register. The site is an
+   editorial layout that people read; this is a tool that people work in, so
+   it trades the wide type and generous rhythm for density, tables, and
+   labels that sit close to their controls.
+
+   What it keeps from the site: the navy ground, the purple accent rules, the
+   hairline dividers, and `.micro` for small caps labels. What it drops: the
+   lattice, the scroll-entrance motion, and the full-bleed hover wipes —
+   animation on a form you use forty times a day is friction, not craft.
+   ========================================================================= */
+
+/* --- 1. Base ------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+  --shell-nav: 232px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--navy-deepest);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--purple);
+  color: var(--off-white);
+}
+
+.micro {
+  font-family: var(--body);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- 2. Shell ----------------------------------------------------------- */
+
+.boot {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--text-faint);
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 60px;
+  padding-inline: clamp(1rem, 3vw, 1.75rem);
+  background: var(--navy);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.shell-brand img {
+  height: 26px;
+}
+
+.shell-brand-sub {
+  color: var(--purple-soft);
+  font-weight: 600;
+}
+
+.shell-user {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.shell-user-name {
+  font-size: 0.9rem;
+}
+
+.shell-user-role {
+  color: var(--text-faint);
+}
+
+.shell-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--shell-nav) 1fr;
+  align-items: start;
+}
+
+.shell-nav {
+  position: sticky;
+  top: 60px;
+  padding: 1.5rem 0.75rem;
+  border-right: 1px solid var(--rule);
+  background: var(--navy);
+  min-height: calc(100vh - 60px);
+}
+
+.shell-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.shell-nav a {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  border-left: 2px solid transparent;
+  transition: background-color 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.shell-nav a:hover {
+  background: var(--navy-lift);
+  color: var(--text);
+}
+
+/* The purple bar is the guide's highlight-bar usage — a rule, not text. */
+.shell-nav a.is-active {
+  background: var(--navy-lift);
+  color: var(--off-white);
+  border-left-color: var(--purple);
+}
+
+.shell-nav-toggle {
+  display: none;
+}
+
+.shell-main {
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  max-width: 1100px;
+}
+
+@media (max-width: 760px) {
+  .shell-body {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-nav {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    display: none;
+  }
+
+  .shell-nav[data-open="true"] {
+    display: block;
+  }
+
+  .shell-nav-toggle {
+    display: inline-block;
+    background: none;
+    border: 1px solid var(--rule-strong);
+    color: var(--text);
+    border-radius: 3px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .shell-user-name,
+  .shell-user-role {
+    display: none;
+  }
+}
+
+/* --- 3. Page furniture -------------------------------------------------- */
+
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.page-title h1 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.15;
+}
+
+.page-lead {
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.page-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.panel {
+  background: var(--navy);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  margin-bottom: 1.75rem;
+}
+
+.panel h2 {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel p + p {
+  margin-top: 0.6rem;
+}
+
+.panel p {
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+
+.panel-quiet {
+  border-style: dashed;
+}
+
+/* --- 4. States ---------------------------------------------------------- */
+
+.state {
+  color: var(--text-muted);
+  padding-block: 1.25rem;
+}
+
+.state-error {
+  color: var(--danger);
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: 3px;
+  margin-bottom: 1.25rem;
+}
+
+.state-ok {
+  color: var(--success);
+  padding-block: 0.75rem;
+}
+
+.state-note {
+  color: var(--text-muted);
+  border-left: 2px solid var(--blue-accent);
+  padding: 0.5rem 0 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* --- 5. Buttons --------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.05rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.2s var(--ease-out), border-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-solid {
+  background: var(--off-white);
+  color: var(--navy);
+  border-color: var(--off-white);
+}
+
+.btn-solid:not([disabled]):hover {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--off-white);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--rule-strong);
+}
+
+.btn-quiet:not([disabled]):hover {
+  color: var(--text);
+  border-color: var(--blue-accent);
+  background: var(--navy-lift);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.btn-danger:not([disabled]):hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: var(--danger);
+}
+
+/* --- 6. Tables ---------------------------------------------------------- */
+
+/* Wide tables scroll inside their own container rather than pushing the
+   page sideways. */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--navy);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: 0.85rem 1rem;
+  vertical-align: top;
+  font-weight: 400;
+}
+
+.table thead th {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+.table tbody tr + tr {
+  border-top: 1px solid var(--rule);
+}
+
+.table tbody tr:hover {
+  background: var(--navy-lift);
+}
+
+.table tbody th[scope="row"] {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.table tbody th a:hover {
+  color: var(--purple-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.row-sub {
+  display: block;
+  color: var(--text-faint);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  margin-top: 0.2rem;
+}
+
+.cell-muted {
+  color: var(--text-faint);
+}
+
+.cell-nowrap {
+  white-space: nowrap;
+}
+
+.cell-long {
+  min-width: 18ch;
+  max-width: 44ch;
+  color: var(--text-muted);
+}
+
+.cell-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: end;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+}
+
+.badge-published {
+  color: var(--success);
+}
+
+.badge-draft {
+  color: var(--text-faint);
+}
+
+/* --- 7. Forms ----------------------------------------------------------- */
+
+.form-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+}
+
+.form-field label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.field {
+  width: 100%;
+  background: var(--navy-deepest);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 0.92rem;
+  padding: 0.55rem 0.7rem;
+  transition: border-color 0.2s var(--ease-out);
+}
+
+.field:hover {
+  border-color: var(--blue-accent);
+}
+
+.field::placeholder {
+  color: var(--text-faint);
+}
+
+.field-inline {
+  width: auto;
+  min-width: 10rem;
+}
+
+.field-hint {
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+.form-inline {
+  display: grid;
+  gap: 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  align-items: end;
+}
+
+.form-inline h2,
+.form-inline .state,
+.form-inline button {
+  grid-column: 1 / -1;
+}
+
+.form-inline button {
+  justify-self: start;
+}
+
+.editor {
+  max-width: 62rem;
+}
+
+.editor-body {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.editor-preview {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  padding: 1.25rem;
+  background: var(--navy);
+  min-height: 20rem;
+}
+
+/* Preview has to match the public site's reading style closely enough that
+   what an editor sees is what a visitor gets. */
+.prose {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.prose > * + * {
+  margin-top: 1.2rem;
+}
+
+.prose h2 {
+  font-size: 1.3rem;
+  color: var(--text);
+  margin-top: 2rem;
+}
+
+.prose h3 {
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-top: 1.5rem;
+}
+
+.prose strong {
+  color: var(--text);
+}
+
+.prose a {
+  color: var(--purple-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.25rem;
+}
+
+.prose li + li {
+  margin-top: 0.4rem;
+}
+
+.prose blockquote {
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--purple);
+  color: var(--text);
+}
+
+.prose code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--navy-lift);
+  padding: 0.15em 0.4em;
+  border-radius: 2px;
+}
+
+/* --- 8. Stats, chips, roles --------------------------------------------- */
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.stat {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--navy);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.stat-link {
+  transition: border-color 0.2s var(--ease-out);
+}
+
+.stat-link:hover {
+  border-color: var(--purple);
+}
+
+.stat-value {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--off-white);
+}
+
+.stat-label {
+  color: var(--text-faint);
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.65rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--text-muted);
+}
+
+.chip-static {
+  padding-right: 0.65rem;
+}
+
+.chip-remove {
+  background: none;
+  border: 0;
+  color: var(--text-faint);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  border-radius: 2px;
+}
+
+.chip-remove:hover {
+  color: var(--danger);
+}
+
+.role-list {
+  margin: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.role-item dt {
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.role-item dd {
+  margin: 0;
+}
+
+/* --- 9. Login ----------------------------------------------------------- */
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--purple) 12%, transparent), transparent 55%),
+    radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 14%, transparent), transparent 55%),
+    var(--navy-deepest);
+}
+
+.login-card {
+  width: min(100%, 24rem);
+  background: var(--navy);
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: clamp(1.5rem, 5vw, 2.25rem);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--display);
+  font-weight: 700;
+  margin-bottom: 1.75rem;
+}
+
+.login-brand img {
+  height: 30px;
+}
+
+.login-card h1 {
+  font-size: 1.5rem;
+}
+
+.login-card .page-lead {
+  margin-bottom: 1.75rem;
+}
+
+.login-card .btn-solid {
+  width: 100%;
+  justify-content: center;
+}
+
+.login-hint {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  line-height: 1.6;
+}
+
+.login-hint code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--purple-soft);
+}
+
+/* --- 10. Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

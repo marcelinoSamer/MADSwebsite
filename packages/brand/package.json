@@ -1,0 +1,8 @@
+{
+  "name": "@mads/brand",
+  "private": true,
+  "version": "0.0.0",
+  "exports": {
+    "./tokens.css": "./tokens.css"
+  }
+}
