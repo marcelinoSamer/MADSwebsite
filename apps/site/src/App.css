@@ -324,7 +324,7 @@ h3 {
 .hero {
   position: relative;
   overflow: hidden;
-  padding-top: clamp(5rem, 13vw, 9rem);
+  padding-top: clamp(3.5rem, 8vw, 6rem);
   padding-bottom: clamp(15rem, 30vw, 23rem);
   border-bottom: 1px solid var(--rule);
 }
@@ -333,12 +333,12 @@ h3 {
    transform to itself. Same for .hero-circle-a. */
 .hero-watermark {
   position: absolute;
-  top: clamp(1.5rem, 6vw, 4.5rem);
+  top: clamp(0.5rem, 3vw, 2rem);
   left: 0;
   right: 0;
   margin-inline: auto;
-  width: min(76vw, 580px);
-  opacity: 0.07;
+  width: min(60vw, 420px);
+  opacity: 0.055;
   pointer-events: none;
   animation: drift 26s var(--ease-out) infinite alternate;
 }
@@ -361,9 +361,9 @@ h3 {
 /* A ring concentric with the wordmark, and one small circle off-axis so the
    composition is centred without being a bullseye. */
 .hero-circle-a {
-  width: clamp(230px, 40vw, 470px);
+  width: clamp(200px, 32vw, 400px);
   aspect-ratio: 1;
-  top: clamp(0.5rem, 3.5vw, 2.5rem);
+  top: clamp(1rem, 4vw, 3rem);
   left: 0;
   right: 0;
   margin-inline: auto;
@@ -372,8 +372,8 @@ h3 {
 .hero-circle-b {
   width: clamp(110px, 16vw, 210px);
   aspect-ratio: 1;
-  top: 56%;
-  right: 14%;
+  top: 50%;
+  right: 13%;
   border-color: var(--purple);
   opacity: 0.3;
   animation-duration: 28s;
@@ -412,11 +412,12 @@ h3 {
 /* Deliberately close in size to an h2: the hero names the association, it
    does not shout a slogan. */
 .hero-title {
-  font-size: clamp(1.55rem, 3.6vw, 2.6rem);
-  line-height: 1.14;
-  letter-spacing: -0.015em;
-  margin: clamp(1.1rem, 2.4vw, 1.6rem) auto 0;
-  max-width: 20ch;
+  font-size: clamp(1.35rem, 2.7vw, 2.05rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: clamp(1rem, 2.2vw, 1.4rem) auto 0;
+  max-width: 22ch;
 }
 
 .hero-lead {

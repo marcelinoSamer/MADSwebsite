@@ -35,7 +35,7 @@ npx vitest run -t "renders a link"
 npm i some-package -w @mads/site                  # add a dep to one app
 ```
 
-CI (`.github/workflows/test.yml`) runs `npm ci && npm test && npm run build` on every PR and on pushes to `main`. Lint is not enforced.
+CI (`.github/workflows/ci.yml`) runs `npm ci && npm test && npm run build` on every PR and on pushes to `main`; a green run on `main` then deploys both apps to Vercel. Lint is not enforced.
 
 ## The backend decision
 

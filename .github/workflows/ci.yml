@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to main should not race the first one to production.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Both apps have to build. A green suite over a broken bundle is the
+      # failure this catches.
+      - run: npm run build
+
+  deploy:
+    name: Deploy ${{ matrix.app }}
+    # Nothing reaches production unless the suite and both builds passed.
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      # One failing app should not block the other from shipping.
+      fail-fast: false
+      matrix:
+        app: [site, admin]
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: >-
+        ${{ matrix.app == 'site'
+            && secrets.VERCEL_PROJECT_ID_SITE
+            || secrets.VERCEL_PROJECT_ID_ADMIN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `pull` brings down the project's settings and environment, including
+      # VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Those are inlined at
+      # build time, so they have to be present before `build` — which is why
+      # they live on the Vercel project rather than in GitHub secrets.
+      - name: Pull Vercel environment
+        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: npx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        run: npx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
