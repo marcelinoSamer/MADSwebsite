@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useAction } from '@mads/db/react'
 
 /**
@@ -9,8 +9,15 @@ import { useAction } from '@mads/db/react'
  * is. A field no human can see catches the unsophisticated ones. If real
  * spam arrives, the answer is a CAPTCHA verified server-side, which is the
  * first thing here that will need an Edge Function.
+ *
+ * The landing page mounts this twice — once in the hero, once in the
+ * membership band — so the field ids come from `useId`. Two inputs sharing a
+ * literal id would make both labels point at whichever one rendered first.
  */
-function NewsletterSignup() {
+function NewsletterSignup({ label = 'Get the newsletter' }) {
+  const id = useId()
+  const emailId = `${id}-email`
+  const trapId = `${id}-website`
   const [email, setEmail] = useState('')
   const [trap, setTrap] = useState('')
   const [done, setDone] = useState(false)
@@ -39,13 +46,13 @@ function NewsletterSignup() {
 
   return (
     <form className="newsletter" onSubmit={handleSubmit} noValidate>
-      <label className="micro" htmlFor="newsletter-email">
-        Get the newsletter
+      <label className="micro" htmlFor={emailId}>
+        {label}
       </label>
 
       <div className="newsletter-row">
         <input
-          id="newsletter-email"
+          id={emailId}
           className="field"
           type="email"
           name="email"
@@ -61,9 +68,9 @@ function NewsletterSignup() {
       </div>
 
       <div className="honeypot" aria-hidden="true">
-        <label htmlFor="newsletter-website">Leave this field empty</label>
+        <label htmlFor={trapId}>Leave this field empty</label>
         <input
-          id="newsletter-website"
+          id={trapId}
           name="website"
           type="text"
           tabIndex={-1}

@@ -325,7 +325,7 @@ h3 {
   position: relative;
   overflow: hidden;
   padding-top: clamp(3.5rem, 8vw, 6rem);
-  padding-bottom: clamp(15rem, 30vw, 23rem);
+  padding-bottom: clamp(16rem, 33vw, 25rem);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -420,12 +420,111 @@ h3 {
   max-width: 22ch;
 }
 
-.hero-lead {
-  margin: clamp(0.9rem, 2vw, 1.3rem) auto 0;
-  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+/* The three entry points, ruled like a table of contents rather than
+   stacked as buttons — this is a directory, and a button would read as a
+   campaign. The rules make the set feel like one object. */
+.hero-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 38rem;
+  margin: clamp(1.75rem, 4vw, 2.75rem) auto 0;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.hero-entry {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: clamp(0.9rem, 2vw, 1.25rem) 0.75rem;
+  text-align: center;
+}
+
+.hero-entry + .hero-entry {
+  border-left: 1px solid var(--rule);
+}
+
+/* The site's one hover gesture, wiped upward so the ruled row stays put. */
+.hero-entry::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--navy-lift);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s var(--ease-ink);
+}
+
+.hero-entry:hover::before,
+.hero-entry:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.hero-entry > * {
+  position: relative;
+}
+
+.hero-entry-label {
+  font-family: var(--body);
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--off-white);
+}
+
+.hero-entry-note {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-faint);
+  transition: color 0.3s var(--ease-out);
+}
+
+.hero-entry:hover .hero-entry-note,
+.hero-entry:focus-visible .hero-entry-note {
   color: var(--text-muted);
-  max-width: 48ch;
-  text-wrap: pretty;
+}
+
+/* The sign-up sits directly under the directory rather than inside it: it
+   is the one thing the hero asks for, and a form cell in a ruled row would
+   read as a fourth link. */
+.hero-newsletter {
+  max-width: 30rem;
+  margin: clamp(1.5rem, 3.5vw, 2.25rem) auto 0;
+}
+
+.hero-newsletter .newsletter label {
+  text-align: center;
+}
+
+.hero-newsletter .newsletter-row {
+  justify-content: center;
+}
+
+.hero-newsletter .newsletter-done {
+  max-width: none;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .hero-entries {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-entry {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: left;
+  }
+
+  .hero-entry + .hero-entry {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
 }
 
 /* Page-load stagger. */
