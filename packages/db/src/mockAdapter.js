@@ -208,10 +208,14 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
     create: (input) =>
       write(() => {
         requirePermission(PERMISSIONS.SYLLABI_WRITE)
-        if (db.courses.some((c) => c.code.toLowerCase() === input.code.toLowerCase())) {
-          throw new DataError(CODES.CONFLICT, `${input.code} is already in the catalogue.`)
+        const code = String(input.code ?? '').trim()
+        const title = String(input.title ?? '').trim()
+        if (!code) throw new DataError(CODES.INVALID, 'Give the course a code.')
+        if (!title) throw new DataError(CODES.INVALID, 'Give the course a title.')
+        if (db.courses.some((c) => c.code.toLowerCase() === code.toLowerCase())) {
+          throw new DataError(CODES.CONFLICT, `${code} is already in the catalogue.`)
         }
-        const course = { id: newId(), code: input.code, title: input.title, level: input.level ?? '' }
+        const course = { id: newId(), code, title, level: String(input.level ?? '').trim() }
         db.courses.push(course)
         return course
       }),
@@ -239,12 +243,27 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
     create: (input) =>
       write(() => {
         const user = requirePermission(PERMISSIONS.SYLLABI_WRITE)
-        find('courses', input.courseId)
+        const course = find('courses', input.courseId)
+        // One file per course per term — the archive lists a course's terms,
+        // and two rows for the same one give the reader no way to tell which
+        // is current. The database enforces the same with a unique index
+        // (migration 0006), so this refuses what the real backend refuses.
+        const year = Number(input.year)
+        if (
+          db.syllabi.some(
+            (s) => s.courseId === input.courseId && s.term === input.term && s.year === year,
+          )
+        ) {
+          throw new DataError(
+            CODES.CONFLICT,
+            `${course.code} already has a ${input.term} ${year} syllabus. Remove it first to replace it.`,
+          )
+        }
         const row = {
           id: newId(),
           courseId: input.courseId,
           term: input.term,
-          year: Number(input.year),
+          year,
           fileName: input.fileName,
           // The real adapter uploads to Storage first and stores the returned
           // object path here. The shape does not change.

@@ -294,6 +294,21 @@ button {
   border-style: dashed;
 }
 
+/* Two panels that belong to one job — the catalogue, and the files filed
+   against it — sit side by side on a wide screen so the table below stays in
+   view while either is being used. */
+.panel-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 1.75rem;
+}
+
+.panel-row .panel {
+  margin-bottom: 0;
+}
+
 /* --- 4. States ---------------------------------------------------------- */
 
 .state {

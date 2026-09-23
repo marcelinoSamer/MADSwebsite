@@ -277,6 +277,47 @@ describe('mock adapter', () => {
       })
     })
 
+    it('deletes a course once nothing is filed against it', async () => {
+      const academics = await clientAs('role-academics')
+      await academics.courses.remove('course-3')
+
+      const codes = (await academics.courses.list()).map((c) => c.code)
+      expect(codes).not.toContain('MACT 3231')
+    })
+
+    it('refuses a course code already in the catalogue, whatever its case', async () => {
+      const academics = await clientAs('role-academics')
+      await expect(
+        academics.courses.create({ code: 'mact 2123', title: 'Probability Theory' }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+
+    // The database has a unique index on (course_id, term, year); without the
+    // same guard here the admin panel would look like it worked against the
+    // mock and fail after the cutover.
+    it('allows only one syllabus per course per term', async () => {
+      const academics = await clientAs('role-academics')
+      await expect(
+        academics.syllabi.create({
+          courseId: 'course-1',
+          term: 'Fall',
+          year: 2026,
+          fileName: 'MACT2123-Fall2026-v2.pdf',
+        }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+
+    it('takes the same file for a different term', async () => {
+      const academics = await clientAs('role-academics')
+      const row = await academics.syllabi.create({
+        courseId: 'course-1',
+        term: 'Spring',
+        year: 2026,
+        fileName: 'MACT2123-Spring2026.pdf',
+      })
+      expect(row).toMatchObject({ term: 'Spring', year: 2026 })
+    })
+
     it('exposes a URL for a stored file', async () => {
       const [file] = await client.syllabi.list({ courseId: 'course-1' })
       expect(client.syllabi.publicUrl(file.filePath)).toBe(`/${file.filePath}`)

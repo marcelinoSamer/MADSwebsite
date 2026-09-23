@@ -51,6 +51,7 @@ Vercel's own Git integration is **not** connected: linking a repo needs an inter
 - Newsletter sign-up is the `subscribe()` RPC, not an insert. It has to upsert to reactivate an unsubscribed address, and granting `anon` an `UPDATE` policy on `subscribers` would let anyone rewrite rows.
 - **Anonymous inserts must not use `.select()`.** A `RETURNING` clause needs a `SELECT` policy, and `anon` deliberately has none on `form_submissions` — a submitter reading that table back would see everyone else's responses. `submissions.create` writes blind and echoes the row locally. This failed silently once; `npm run db:verify` catches it.
 - **Reading a form is not the same as editing one or reading its answers.** `forms_read` (0005) admits `audience = 'public'` to anyone and every other form to any signed-in user — nothing narrower, because an internal form is filled in by whoever needs the thing, not by the committee that processes it. `forms:write` and `submissions:read` gate the two acts that *are* editorial. Before 0005 that policy required one of those two permissions, which left `submissions_insert` in 0001 already permitting a write that nothing could compose: a member could insert an answer to a form they were not allowed to read.
+- **One syllabus per course per term**, as a unique index on `syllabi (course_id, term, year)` (0006). The archive lists a course's terms; two rows for the same term give a reader no way to tell which is current. Replacing a file is therefore delete-then-upload, which also takes the old object out of Storage instead of stranding it. The Supabase adapter catches the violation, deletes the bytes it just uploaded, and names the term in the message.
 
 Run `npm run db:verify` after any migration. It asserts what anon and admin each *cannot* do, and cleans up after itself.
 
@@ -166,6 +167,15 @@ Authorization is three layers, and all three matter:
 `Shell` filters its nav by the same permissions, so nobody navigates into a dead end.
 
 The `PostEditor` loads the post, then mounts the editor **keyed on the post id** with the data as initial state, rather than copying fetched data into state in an effect. Because that remounts on create-navigation, the "Saved." confirmation rides through router state (`location.state.justSaved`). `FormEditor` is the same shape for the same reason.
+
+### Syllabi
+
+The page owns the **catalogue** as well as the files: a course is added and deleted here, because a syllabus is filed against a course and there was otherwise no way to create one short of a migration. Two things about deleting:
+
+- The foreign key is `on delete restrict`, so the database refuses a course that still has syllabi. The page answers that out loud rather than routing around it — the inline confirmation names how many files are about to go, and on yes it removes each one through `syllabi.remove` (which takes its bytes out of Storage) before deleting the course. Do not make this a cascade in SQL; the loud refusal is the point, and a cascade would leave the objects orphaned in the bucket.
+- The row's Remove button is labelled `Remove <code> from the catalogue`, deliberately avoiding the word "course" — every row's visible text is just "Remove", so the accessible name has to disambiguate, and `getByLabelText(/course/i)` has to keep matching the upload form's Course select and nothing else.
+
+`level` is free text with a `datalist` of suggestions, not a select. A board that starts tagging graduate courses gets a new filter on the public archive without a migration; the archive derives its level chips from whatever is actually in the table.
 
 ### Forms
 

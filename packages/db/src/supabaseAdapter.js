@@ -310,20 +310,35 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
         if (error) throw toDataError(error, 'Upload failed.')
       }
 
-      return run(
-        sb.from('syllabi')
-          .insert({
-            course_id: input.courseId,
-            term: input.term,
-            year: Number(input.year),
-            file_name: fileName,
-            file_path: path,
-            uploaded_by: auth_.user?.id ?? null,
-          })
-          .select()
-          .single(),
-        ROW.syllabus.toCamel,
-      )
+      try {
+        return await run(
+          sb.from('syllabi')
+            .insert({
+              course_id: input.courseId,
+              term: input.term,
+              year: Number(input.year),
+              file_name: fileName,
+              file_path: path,
+              uploaded_by: auth_.user?.id ?? null,
+            })
+            .select()
+            .single(),
+          ROW.syllabus.toCamel,
+        )
+      } catch (error) {
+        // The row lost to the unique index on (course_id, term, year), so the
+        // bytes uploaded above have nothing pointing at them. Clean up rather
+        // than leaving an orphan in the bucket, and say which term clashed —
+        // toDataError only knows "something already exists".
+        if (error.code === CODES.CONFLICT) {
+          if (input.file) await sb.storage.from('syllabi').remove([path])
+          throw new DataError(
+            CODES.CONFLICT,
+            `There is already a ${input.term} ${input.year} syllabus on this course. Remove it first to replace it.`,
+          )
+        }
+        throw error
+      }
     },
 
     remove: async (id) => {
