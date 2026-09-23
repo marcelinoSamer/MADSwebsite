@@ -45,11 +45,12 @@ The project is **live**: `mads` in `eu-central-1`, deployed to two Vercel projec
 
 Vercel's own Git integration is **not** connected: linking a repo needs an interactive GitHub OAuth connection on the Vercel account, which an API token cannot create. Deployment runs from `.github/workflows/ci.yml` instead, gated on the test job. If someone later connects the repo in the Vercel dashboard, delete the `deploy` job — otherwise every push deploys twice.
 
-**Authorization is RLS, not client code.** `has_permission(perm)` is a `security definer` helper that joins `profiles → roles`; every policy calls it with the same strings as `permissions.js`. Two things worth knowing before editing policies:
+**Authorization is RLS, not client code.** `has_permission(perm)` is a `security definer` helper that joins `profiles → roles`; every policy calls it with the same strings as `permissions.js`. Things worth knowing before editing policies:
 
 - Publishing is enforced by the `posts_publish_guard` trigger, not a policy — an `UPDATE` policy cannot compare `old.status` to `new.status`. The trigger also stamps `published_at` on first publish and clears it on unpublish, which is why the adapter never sets that column.
 - Newsletter sign-up is the `subscribe()` RPC, not an insert. It has to upsert to reactivate an unsubscribed address, and granting `anon` an `UPDATE` policy on `subscribers` would let anyone rewrite rows.
 - **Anonymous inserts must not use `.select()`.** A `RETURNING` clause needs a `SELECT` policy, and `anon` deliberately has none on `form_submissions` — a submitter reading that table back would see everyone else's responses. `submissions.create` writes blind and echoes the row locally. This failed silently once; `npm run db:verify` catches it.
+- **Reading a form is not the same as editing one or reading its answers.** `forms_read` (0005) admits `audience = 'public'` to anyone and every other form to any signed-in user — nothing narrower, because an internal form is filled in by whoever needs the thing, not by the committee that processes it. `forms:write` and `submissions:read` gate the two acts that *are* editorial. Before 0005 that policy required one of those two permissions, which left `submissions_insert` in 0001 already permitting a write that nothing could compose: a member could insert an answer to a form they were not allowed to read.
 
 Run `npm run db:verify` after any migration. It asserts what anon and admin each *cannot* do, and cleans up after itself.
 
@@ -59,6 +60,7 @@ Settled scope decisions, made deliberately — do not "improve" them without ask
 - **Syllabi are public.** No login on the public site at all.
 - **The newsletter collects sign-ups only.** Nothing sends mail. The admin panel exports CSV so a newsletter can actually go out via whatever tool the board already uses.
 - **Posts are stored as markdown** so the editor can become WYSIWYG later without a data migration.
+- **A form's `audience` is its public flag, and it defaults to `internal`.** `public` forms render on the site at `/forms/<slug>`; `internal` ones exist only inside the admin panel and are filled in there — venue reservations, event proposals, anything the committee raises against itself. A form reaches the public site because someone chose that, never because they left a field blank.
 
 Consequence: **v1 needs no Edge Functions.** Every path is client → Postgres through RLS. The first thing that will need one is CAPTCHA verification, if the anonymous inserts get spammed.
 
@@ -71,6 +73,7 @@ Everything data-related goes through this package. **No component imports a back
 - `createDataClient({ env })` picks the adapter: Supabase when `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` are set, the mock otherwise. The cutover changes the environment, not the code.
 - `mockAdapter.js` — in-memory, seeded from `seed.js`, persisted to `localStorage` in the browser. **It enforces permissions on every mutation.** That is deliberate: if the admin UI is built against a permissive mock it will be built wrong, and it will only break after the Supabase cutover.
 - `supabaseAdapter.js` — the real backend. Postgres is snake_case and the apps are camelCase; that translation happens here and nowhere else. It contains **no permission checks** — the database refuses, and `toDataError` maps Postgres error codes (`42501`, `23505`, `23503`, `PGRST116`) onto the same `DataError` codes the mock throws, so UI code branches on one set.
+- `formRules.js` — the rules for a form definition, imported by **both** adapters. It is not a permission check, which is why it lives outside the rule that keeps those out of `supabaseAdapter.js`: it catches what Postgres would reject opaquely (the `audience` check constraint) or accept and quietly corrupt (two questions sharing a `name`, since an answer is stored under its field name). `missingAnswers` is here for the same reason — RLS decides whether you may submit, not what you wrote.
 - `permissions.js` — permission strings are the contract. They will end up as literals inside SQL policies, so keep them stable. A role is a bag of strings; a user has one role. Adding a committee's permissions must stay a data change, never a migration.
 - `seed.js` doubles as the schema reference — flat shapes, ids not nesting, ISO date strings, exactly what PostgREST will return.
 
@@ -162,7 +165,22 @@ Authorization is three layers, and all three matter:
 
 `Shell` filters its nav by the same permissions, so nobody navigates into a dead end.
 
-The `PostEditor` loads the post, then mounts the editor **keyed on the post id** with the data as initial state, rather than copying fetched data into state in an effect. Because that remounts on create-navigation, the "Saved." confirmation rides through router state (`location.state.justSaved`).
+The `PostEditor` loads the post, then mounts the editor **keyed on the post id** with the data as initial state, rather than copying fetched data into state in an effect. Because that remounts on create-navigation, the "Saved." confirmation rides through router state (`location.state.justSaved`). `FormEditor` is the same shape for the same reason.
+
+### Forms
+
+Four routes, and which layer guards each is the whole design:
+
+| Route | Guard | Who |
+| --- | --- | --- |
+| `/forms` | none | everyone signed in |
+| `/forms/:id/fill` | none | everyone signed in |
+| `/forms/new`, `/forms/:id/edit` | `Gate forms:write` | editors |
+| `/forms/:id/submissions` | `Gate submissions:read` | whoever processes the answers |
+
+**Filling a form in is not an editorial act, so it is not behind a `Gate` and `/forms` is not behind one either** — this is the one nav entry in `Shell` with `need: []`. A venue reservation is raised by whoever needs the venue, which includes the president and includes a Writer whose role grants nothing else in the panel. The list varies its own actions instead: Fill in for everyone, Responses on `submissions:read`, Edit/Close/New on `forms:write`. A role that cannot reopen a closed form is not shown closed forms at all, on the same reasoning as `Shell` hiding dead-end nav.
+
+`FormEditor` is a field builder, so a new form is a row written from the panel rather than an edit to `seed.js` and a migration. A field's `name` follows its label until someone edits it by hand — after that it is theirs, because renaming a field orphans every answer already stored under the old key. Same rule as a post's slug, and `FieldRow` tracks it with the same `nameTouched` flag.
 
 Forms use `noValidate` and validate in JS. This is not stylistic — jsdom reports a `required` file input as invalid even when a file is attached, so native validation silently blocks submits in tests.
 

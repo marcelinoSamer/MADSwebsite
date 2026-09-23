@@ -9,7 +9,9 @@ const NAV = [
   { to: '/', label: 'Overview', end: true, need: [] },
   { to: '/posts', label: 'Posts', need: [PERMISSIONS.POSTS_READ] },
   { to: '/syllabi', label: 'Syllabi', need: [PERMISSIONS.SYLLABI_WRITE] },
-  { to: '/forms', label: 'Forms', need: [PERMISSIONS.FORMS_WRITE] },
+  // No permission: everyone signed in fills forms in, whatever else their
+  // role allows. The list itself decides which actions each role is offered.
+  { to: '/forms', label: 'Forms', need: [] },
   { to: '/subscribers', label: 'Subscribers', need: [PERMISSIONS.SUBSCRIBERS_READ] },
   { to: '/members', label: 'Members', need: [PERMISSIONS.MEMBERS_WRITE] },
 ]

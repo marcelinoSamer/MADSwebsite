@@ -477,6 +477,16 @@ button {
   color: var(--text-faint);
 }
 
+/* A form's audience. Blue Accent rather than primary purple: these are
+   0.68rem caps, and primary purple on navy lands at 2.9:1. */
+.badge-public {
+  color: var(--blue-accent);
+}
+
+.badge-internal {
+  color: var(--text-faint);
+}
+
 /* --- 7. Forms ----------------------------------------------------------- */
 
 .form-field {
@@ -543,6 +553,93 @@ button {
 
 .form-inline button {
   justify-self: start;
+}
+
+/* A checkbox or radio sits beside its label, not above it — the grid the
+   rest of .form-field uses would strand a 1rem control on its own row. */
+.form-field-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-field-check input {
+  accent-color: var(--purple-soft);
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+}
+
+.form-fieldset {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  margin-inline: 0;
+}
+
+.form-fieldset legend,
+.field-legend {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding-inline: 0.35rem;
+}
+
+.field-legend {
+  padding-inline: 0;
+}
+
+.field-optional {
+  color: var(--text-faint);
+  text-transform: none;
+  letter-spacing: 0.06em;
+}
+
+/* --- Form builder ------------------------------------------------------- */
+
+.field-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field-row {
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--purple);
+  border-radius: 3px;
+  padding: 0.9rem 1rem 0.2rem;
+  background: var(--navy);
+}
+
+.field-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.field-row-index {
+  color: var(--text-faint);
+}
+
+.field-row-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Question and type on one line, name and required under them. Collapses to
+   a single column before the inputs get too narrow to read what is in them. */
+.field-row-grid {
+  display: grid;
+  gap: 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  align-items: end;
+}
+
+.field-row-grid .form-field-check {
+  margin-bottom: 1.1rem;
 }
 
 .editor {

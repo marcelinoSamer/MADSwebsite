@@ -8,6 +8,8 @@ import PostEditor from './pages/PostEditor'
 import Syllabi from './pages/Syllabi'
 import Subscribers from './pages/Subscribers'
 import Forms from './pages/Forms'
+import FormEditor from './pages/FormEditor'
+import FormFill from './pages/FormFill'
 import Submissions from './pages/Submissions'
 import Members from './pages/Members'
 import NotFound from './pages/NotFound'
@@ -28,6 +30,9 @@ function App() {
           <Route path="syllabi" element={<Syllabi />} />
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="forms" element={<Forms />} />
+          <Route path="forms/new" element={<FormEditor />} />
+          <Route path="forms/:id/edit" element={<FormEditor />} />
+          <Route path="forms/:id/fill" element={<FormFill />} />
           <Route path="forms/:id/submissions" element={<Submissions />} />
           <Route path="members" element={<Members />} />
           <Route path="*" element={<NotFound />} />

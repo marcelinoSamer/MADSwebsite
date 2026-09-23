@@ -65,6 +65,10 @@ await check('submits the feedback form', async () => {
 })
 await refuses('cannot read the subscriber list', () => anon.subscribers.list())
 await refuses('cannot read form responses', () => anon.submissions.list())
+// The public flag, from the outside: forms_read lets anon see `public` rows
+// only, which is what keeps an internal form's questions off the site.
+await refuses('cannot read an internal form', () => anon.forms.bySlug('venue-reservation'))
+await refuses('cannot list internal forms', () => anon.forms.list({ audience: 'internal' }))
 await refuses('cannot read the member roster', () => anon.members.list())
 await refuses('cannot create a post', () => anon.posts.create({ slug, title: 'Nope' }))
 
@@ -105,6 +109,37 @@ await check('unpublishing clears published_at', async () => {
 await refuses('the draft is hidden from anonymous readers', () => anon.posts.bySlug(slug))
 await check('reads the subscriber list', () => admin.subscribers.list())
 await check('reads form responses', () => admin.submissions.list())
+
+// Internal forms (0005). A signed-in member reads and answers one; anonymous
+// visitors can do neither, which is the whole of the public flag.
+let internalFormId = null
+await check('reads an internal form', async () => {
+  const form = await admin.forms.bySlug('venue-reservation')
+  if (form.audience !== 'internal') throw new Error(`audience is ${form.audience}`)
+  internalFormId = form.id
+})
+
+await check('fills that internal form in', async () => {
+  if (!internalFormId) throw new Error('the internal form was not readable')
+  await admin.submissions.create(internalFormId, {
+    venue: 'Hatem Hall seminar room',
+    date: '2026-10-02',
+    attendees: 1,
+    purpose: probeMessage,
+  })
+})
+
+// Through the raw client on purpose. `submissions.create` would fail at its
+// own forms.byId first, which proves the read policy again and leaves the
+// insert policy — the one that actually stops the write — untested.
+await refuses('an anonymous visitor cannot answer it', async () => {
+  if (!internalFormId) throw new Error('the internal form was not readable')
+  const { error } = await anon.client
+    .from('form_submissions')
+    .insert({ form_id: internalFormId, payload: { purpose: probeMessage } })
+  if (error) throw error
+})
+
 await check('reads the member roster', async () => {
   const members = await admin.members.list()
   if (members.length < 2) throw new Error(`expected 2 accounts, got ${members.length}`)
@@ -121,12 +156,14 @@ await check('removes the probe subscriber', async () => {
 
 // No delete method on submissions — responses are meant to be durable — so
 // this goes through the underlying client directly.
-await check('removes the probe submission', async () => {
-  const { error } = await admin.client
-    .from('form_submissions')
-    .delete()
-    .eq('payload->>message', probeMessage)
-  if (error) throw error
+await check('removes the probe submissions', async () => {
+  for (const key of ['message', 'purpose']) {
+    const { error } = await admin.client
+      .from('form_submissions')
+      .delete()
+      .eq(`payload->>${key}`, probeMessage)
+    if (error) throw error
+  }
 })
 
 await admin.auth.signOut()

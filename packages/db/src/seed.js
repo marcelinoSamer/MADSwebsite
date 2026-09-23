@@ -225,6 +225,22 @@ export function createSeed() {
       ],
       createdAt: '2026-09-01T09:00:00.000Z',
     },
+    {
+      id: 'form-3',
+      slug: 'venue-reservation',
+      title: 'Venue reservation request',
+      description:
+        'Raise this before booking a room. Whoever needs the venue fills it in — you do not need any particular role to do so.',
+      audience: 'internal',
+      isOpen: true,
+      fields: [
+        { id: 'f1', name: 'venue', label: 'Which venue?', type: 'select', required: true, options: ['Hatem Hall seminar room', 'Moataz Al Alfi Hall', 'Library seminar room', 'Outdoor — Bartlett Plaza'] },
+        { id: 'f2', name: 'date', label: 'Date needed', type: 'date', required: true },
+        { id: 'f3', name: 'attendees', label: 'Expected attendees', type: 'number', required: true },
+        { id: 'f4', name: 'purpose', label: 'What is it for?', type: 'textarea', required: true },
+      ],
+      createdAt: '2026-09-01T09:00:00.000Z',
+    },
   ]
 
   const submissions = [

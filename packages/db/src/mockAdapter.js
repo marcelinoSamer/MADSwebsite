@@ -1,5 +1,6 @@
 import { createSeed } from './seed.js'
 import { can, PERMISSIONS } from './permissions.js'
+import { checkForm, missingAnswers } from './formRules.js'
 import { DataError, CODES } from './errors.js'
 
 const STORAGE_KEY = 'mads.mock.db'
@@ -320,16 +321,24 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
     create: (input) =>
       write(() => {
         requirePermission(PERMISSIONS.FORMS_WRITE)
-        if (db.forms.some((f) => f.slug === input.slug)) {
-          throw new DataError(CODES.CONFLICT, `A form with the slug "${input.slug}" already exists.`)
+        // Normalised before the check, so create and update judge the same
+        // string — and so a missing title fails the check rather than being
+        // stringified into one.
+        const slug = String(input.slug ?? '').trim()
+        const title = String(input.title ?? '').trim()
+        checkForm({ ...input, slug, title })
+        if (db.forms.some((f) => f.slug === slug)) {
+          throw new DataError(CODES.CONFLICT, `A form with the slug "${slug}" already exists.`)
         }
         const form = {
           id: newId(),
-          slug: input.slug,
-          title: input.title,
+          slug,
+          title,
           description: input.description ?? '',
+          // Internal by default. A form that reaches the public site should
+          // have been published on purpose, never by forgetting a field.
           audience: input.audience ?? 'internal',
-          isOpen: true,
+          isOpen: input.isOpen ?? true,
           fields: input.fields ?? [],
           createdAt: now(),
         }
@@ -341,6 +350,10 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
       write(() => {
         requirePermission(PERMISSIONS.FORMS_WRITE)
         const form = find('forms', id)
+        checkForm(patch)
+        if (patch.slug && patch.slug !== form.slug && db.forms.some((f) => f.slug === patch.slug)) {
+          throw new DataError(CODES.CONFLICT, `A form with the slug "${patch.slug}" already exists.`)
+        }
         Object.assign(form, patch)
         return form
       }),
@@ -372,9 +385,7 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         if (form.audience === 'internal' && !currentUser()) {
           throw new DataError(CODES.NOT_AUTHENTICATED, 'Sign in to submit this form.')
         }
-        const missing = form.fields
-          .filter((f) => f.required && !String(payload[f.name] ?? '').trim())
-          .map((f) => f.label)
+        const missing = missingAnswers(form, payload)
         if (missing.length) {
           throw new DataError(CODES.INVALID, `Please fill in: ${missing.join(', ')}.`)
         }

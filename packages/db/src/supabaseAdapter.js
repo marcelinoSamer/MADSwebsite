@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { checkForm, missingAnswers } from './formRules.js'
 import { DataError, CODES } from './errors.js'
 
 /**
@@ -369,10 +370,17 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
     },
     bySlug: (slug) => run(sb.from('forms').select('*').eq('slug', slug).single(), ROW.form.toCamel),
     byId: (id) => run(sb.from('forms').select('*').eq('id', id).single(), ROW.form.toCamel),
-    create: (input) =>
-      run(sb.from('forms').insert(ROW.form.toSnake(input)).select().single(), ROW.form.toCamel),
-    update: (id, patch) =>
-      run(sb.from('forms').update(ROW.form.toSnake(patch)).eq('id', id).select().single(), ROW.form.toCamel),
+    // checkForm is not a permission check — RLS owns those. It catches what
+    // Postgres would either reject opaquely (the audience constraint) or
+    // accept and corrupt (two questions sharing a name).
+    create: (input) => {
+      checkForm(input)
+      return run(sb.from('forms').insert(ROW.form.toSnake(input)).select().single(), ROW.form.toCamel)
+    },
+    update: (id, patch) => {
+      checkForm(patch)
+      return run(sb.from('forms').update(ROW.form.toSnake(patch)).eq('id', id).select().single(), ROW.form.toCamel)
+    },
     remove: (id) =>
       run(sb.from('forms').delete().eq('id', id).select().single(), ROW.form.toCamel),
   }
@@ -388,9 +396,7 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
       // Required-field validation stays client-side, mirroring the mock. RLS
       // decides *whether* you may submit; it does not police field contents.
       const form = await forms.byId(formId)
-      const missing = (form.fields ?? [])
-        .filter((field) => field.required && !String(payload[field.name] ?? '').trim())
-        .map((field) => field.label)
+      const missing = missingAnswers(form, payload)
       if (missing.length) {
         throw new DataError(CODES.INVALID, `Please fill in: ${missing.join(', ')}.`)
       }

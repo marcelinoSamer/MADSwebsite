@@ -152,6 +152,121 @@ describe('mock adapter', () => {
         code: CODES.NOT_AUTHENTICATED,
       })
     })
+
+    // Answering is not an editorial act. A Writer holds neither forms:write
+    // nor submissions:read, and still has to be able to ask for a venue.
+    it('lets any signed-in member fill an internal form in', async () => {
+      const writer = await clientAs('role-writer')
+      const form = await writer.forms.bySlug('venue-reservation')
+
+      const row = await writer.submissions.create(form.id, {
+        venue: 'Hatem Hall seminar room',
+        date: '2026-10-02',
+        attendees: 30,
+        purpose: 'Study group kickoff.',
+      })
+
+      expect(row.submittedBy).toBe('user-test')
+    })
+
+    it('still refuses to show that member the answers', async () => {
+      const writer = await clientAs('role-writer')
+      await expect(writer.submissions.list()).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+
+    it('refuses a submission to a closed form', async () => {
+      const president = await clientAs('role-president')
+      const form = await president.forms.bySlug('venue-reservation')
+      await president.forms.update(form.id, { isOpen: false })
+
+      await expect(
+        president.submissions.create(form.id, {
+          venue: 'Hatem Hall seminar room',
+          date: '2026-10-02',
+          attendees: 30,
+          purpose: 'Study group kickoff.',
+        }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+  })
+
+  describe('form definitions', () => {
+    const DRAFT = {
+      slug: 'equipment-loan',
+      title: 'Equipment loan',
+      fields: [{ id: 'f1', name: 'item', label: 'What do you need?', type: 'text', required: true }],
+    }
+
+    it('defaults a new form to internal, so nothing reaches the site by accident', async () => {
+      const president = await clientAs('role-president')
+      const form = await president.forms.create(DRAFT)
+
+      expect(form.audience).toBe('internal')
+      expect(form.isOpen).toBe(true)
+    })
+
+    it('blocks a member without forms:write from editing one', async () => {
+      const writer = await clientAs('role-writer')
+      const form = await writer.forms.bySlug('venue-reservation')
+
+      await expect(writer.forms.update(form.id, { audience: 'public' })).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+      await expect(writer.forms.create(DRAFT)).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+
+    it('refuses an audience the check constraint would refuse', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create({ ...DRAFT, audience: 'semi-public' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    // Answers are stored keyed by field name, so a duplicate would silently
+    // overwrite the other question's answer.
+    it('refuses two questions sharing a name', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create({
+          ...DRAFT,
+          fields: [
+            { id: 'f1', name: 'item', label: 'What do you need?', type: 'text' },
+            { id: 'f2', name: 'item', label: 'For how long?', type: 'text' },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+
+    it('refuses a form with no title rather than storing “undefined”', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create({ slug: 'equipment-loan' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    it('refuses a slug that would not survive a URL', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create({ ...DRAFT, slug: 'Equipment Loan' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    it('refuses a slug another form already holds', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create({ ...DRAFT, slug: 'venue-reservation' }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+
+    it('publishes a form to the site by flipping its audience', async () => {
+      const president = await clientAs('role-president')
+      const form = await president.forms.bySlug('venue-reservation')
+      const updated = await president.forms.update(form.id, { audience: 'public' })
+
+      expect(updated.audience).toBe('public')
+      const listed = await president.forms.list({ audience: 'public' })
+      expect(listed.map((f) => f.slug)).toContain('venue-reservation')
+    })
   })
 
   describe('syllabi', () => {
