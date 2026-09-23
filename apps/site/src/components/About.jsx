@@ -6,28 +6,23 @@ function About() {
       <div className="container">
         <Reveal className="section-mark micro">
           <span className="num">§ 01</span>
-          <span>Our vision</span>
+          <span>About</span>
         </Reveal>
 
-        <div className="about-grid">
-          <Reveal className="about-note micro">
-            Mathematics, actuarial science and data science, studied
-            together rather than apart.
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <h2>
-              Making a demanding field feel like <em>home.</em>
-            </h2>
-            <p className="section-lead">
-              Mathematics, actuarial science, and data science share a way of
-              thinking, precise, rigorous, and quietly powerful. MADS exists
-              to give students in these majors a space to grow that thinking
-              together: through competitions, industry exposure, and a
-              community that takes ideas seriously.
-            </p>
-          </Reveal>
-        </div>
+        <Reveal className="about-body">
+          <p>
+            MADS is the student association for the mathematics, actuarial
+            science, and data science majors at AUC. We run the talks,
+            competitions, and workshops that happen around the coursework,
+            keep an archive of past syllabi so you know what a course covers
+            before you register, and pass on internships and opportunities
+            as they reach us.
+          </p>
+          <p>
+            Anyone in the three majors is already a member — there is nothing
+            to sign. The calendar below is where the semester lives.
+          </p>
+        </Reveal>
       </div>
     </section>
   )

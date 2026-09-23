@@ -8,8 +8,7 @@ describe('Navbar', () => {
   it('renders a link to each main section', () => {
     renderWithProviders(<Navbar />)
     expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /what we do/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /activities/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument()
   })
 
   it('renders a "Join MADS" call-to-action', () => {

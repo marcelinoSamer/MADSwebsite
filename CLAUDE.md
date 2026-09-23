@@ -121,9 +121,17 @@ Voice, if you touch copy: warm but professional; dates, deadlines, and links iso
 
 Routes: `/` (Landing) · `/blog` · `/blog/:slug` · `/syllabi` · `/forms/:slug` · `*`. **Landing is eager; every other route is `lazy()`.** react-markdown is most of the JS on this site and a visitor who only sees the homepage should not download it — don't un-split them.
 
-`pages/Landing.jsx` holds the original section composition: `Hero`/`About`/`Pillars`/`Activities`/`JoinCta`. Section components take no props; all but `Hero` and `JoinCta` are also state-less — those two mount `NewsletterSignup`.
+`pages/Landing.jsx` is `Hero`/`About`/`Calendar`/`JoinCta` — four sections, deliberately. The page was once five and led with a slogan; it was cut back because everyone on campus already knows the association, so descriptive copy earns nothing and the page's job is to hand over the archives, the schedule, and the sign-up. Section components take no props; all but `Hero` and `JoinCta` are also state-less — those two mount `NewsletterSignup`.
+
+`Calendar.jsx` holds the semester schedule **as a hardcoded array**, because there is no events table in `packages/db` and nothing in the admin panel writes one. The entries currently in it are placeholders. If the board starts editing that file more than a couple of times a semester, that is the signal to give events a table and an admin page, the way posts have one.
 
 **The hero is a directory, not a pitch.** Centred, deliberately small type — the title is set near an `h2` so the marks behind it (watermark, circles, curve) carry the image — then the two archives as a ruled two-up row, then the sign-up form. It has no slogan and no CTA buttons: this is a service site for an association the campus already knows, so the hero's job is to hand over what a visitor came for without scrolling. `NewsletterSignup` therefore renders **twice** on the landing page, which is why its field ids come from `useId` rather than literals.
+
+**The inner routes are documents, not landing-page sections.** `PageHead` is short by design — a highlight bar, an `h1` two steps down from the landing page's display sizes, a lead, and then `.page-toolbar`, the hairline bar that carries counts and filters — because someone opening `/blog` or `/syllabi` came for one particular thing and the content has to start inside the first screen. Don't restore the full-height masthead these pages used to open with.
+
+**Blog and syllabi list in cards, not in ruled rows.** The calendar's hairline rows work for a date and one line about it. A post is a date, a title, and a paragraph; a course is a code, a title, a level, and a set of files — at that height hairlines stop separating anything, and the reader cannot see where one item ends. Both lists are therefore bordered cards on `--navy-deep`, and the newest post takes the full width of the grid as a lead story. `.prose` is also set brighter and a step larger than the rest of the site: `--text-muted` is right for a paragraph under a heading and wrong for eight hundred words of one.
+
+**`.section h2` caps headings at `18ch`**, which is right on the landing page and wrong inside a card that is already the measure. `.post-card h2` and `.course-card h2` both set `max-width: none` — a new card-shaped heading will need the same, or it will break over two lines for no reason.
 
 Three shared pieces are not sections:
 
@@ -149,11 +157,13 @@ Four patterns carry the site. Reuse them rather than inventing a parallel one.
 
 **Motion has two tiers.** Above the fold is CSS-only: `.rise` sets `opacity: 0` and `.rise-1` … `.rise-4` add `animation-delay` in ~130ms steps, so the hero staggers on load without JS. Everything below the fold uses `<Reveal>`. Don't use `Reveal` in the hero — it would wait for an intersection that already happened. New `.rise-N` steps need a matching `prefers-reduced-motion` entry.
 
-**Hover is one gesture, reused.** A `::before` at `transform: scaleX(0)` with `transform-origin: left`, wiped to `scaleX(1)` over `--ease-ink`. `.btn` and `.nav-links a` wipe purple; `.pillar-row` and `.post-row` wipe `--navy-lift` and bleed past the container via `inset: 0 calc(var(--gutter) * -1)` so the fill reads full-bleed while text stays on the grid. `.activity-row` is the one exception — it steps `padding-left` instead, since a fill would fight the staircase.
+**Hover is one gesture, reused.** A `::before` at `transform: scaleX(0)` with `transform-origin: left`, wiped to `scaleX(1)` over `--ease-ink`. `.btn` and `.nav-links a` wipe purple; `.post-card` wipes `--navy-lift` inside its own border; `.hero-entry` wipes the same lift inside its own ruled cell. It lives on a pseudo-element for a second reason on the cards: `Reveal` animates the element's own `transform`, and a hover transform on the same node would fight it. `.event-row` deliberately has no hover — a calendar row is not a link.
 
-**Section rhythm is deliberate.** `hero` and `pillars` have *no* background, so the fixed `.lattice` shows through them; `about` and `join` are `--navy-deep`; `footer` is `--navy-deepest`. `activities` is the single `--neutral` section — one light break in a navy page. Inner routes (`.page-head`, `.page-body`) also have no background, keeping the lattice visible. Adding a second light section flattens the rhythm.
+**Section rhythm is deliberate.** `hero` has *no* background, so the fixed `.lattice` shows through it; `about` and `join` are `--navy-deep`; `footer` is `--navy-deepest`. `calendar` is the single `--neutral` section — one light break in a navy page, and it falls on the calendar because that is what people come back to check. Inner routes (`.page-head`, `.page-body`) also have no background, keeping the lattice visible. Adding a second light section flattens the rhythm.
 
-**Breakpoints are per-component, not tokenised** — each lives next to the rules it changes: 880px (nav links drop, the mobile menu button appears), 820px (about grid → one column), 760px (pillar row → two columns), 620px (activity staircase flattens, course row stacks). Sizing otherwise uses `clamp()`.
+**Nothing brand-coloured carries small text on the Neutral section.** Primary purple lands at 3.0:1 on `--neutral` and Secondary Blue at 3.2:1, so every label, date, and paragraph in `.calendar` is a `color-mix` of `--navy` at 75–78% or darker. The accents there are rules and marks only — the same reasoning as `--purple-soft` on navy.
+
+**Breakpoints are per-component, not tokenised** — each lives next to the rules it changes: 880px (nav links drop, the mobile menu button appears), 900px (the lead post card splits into title / summary columns), 620px (hero entries stack, event row stacks, post navigation stacks). Sizing otherwise uses `clamp()` and `auto-fill` grids guarded with `min(100%, …)`.
 
 ## `apps/admin`
 

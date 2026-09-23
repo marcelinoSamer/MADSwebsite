@@ -1,7 +1,6 @@
 import Hero from '../components/Hero'
 import About from '../components/About'
-import Pillars from '../components/Pillars'
-import Activities from '../components/Activities'
+import Calendar from '../components/Calendar'
 import JoinCta from '../components/JoinCta'
 
 function Landing() {
@@ -9,8 +8,7 @@ function Landing() {
     <>
       <Hero />
       <About />
-      <Pillars />
-      <Activities />
+      <Calendar />
       <JoinCta />
     </>
   )

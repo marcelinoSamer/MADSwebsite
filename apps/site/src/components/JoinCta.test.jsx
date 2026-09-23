@@ -8,7 +8,7 @@ describe('JoinCta', () => {
   it('renders the call-to-action heading', () => {
     renderWithProviders(<JoinCta />)
     expect(
-      screen.getByRole('heading', { name: /ready to be part of it/i }),
+      screen.getByRole('heading', { name: /keep an eye on the term/i }),
     ).toBeInTheDocument()
   })
 

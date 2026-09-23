@@ -13,8 +13,8 @@
      #E4E2DD  Neutral           backgrounds, subtle dividers
      #FEFEFE  Off-White         logo text, light contrast details
 
-   Composition: navy ground, hairline lattice, section marks, a ruled
-   discipline table (not cards), and one drawn normal curve.
+   Composition: navy ground, hairline lattice, section marks, ruled tables
+   (not cards), and one drawn normal curve.
    ========================================================================= */
 
 /* --- 1. Base ------------------------------------------------------------ */
@@ -129,13 +129,6 @@ h3 {
 .section h2 em {
   font-style: normal;
   color: var(--purple-soft);
-}
-
-.section-lead {
-  font-size: clamp(1.05rem, 1.7vw, 1.28rem);
-  line-height: 1.6;
-  color: var(--text-muted);
-  max-width: 54ch;
 }
 
 /* --- 3. Buttons --------------------------------------------------------- */
@@ -627,199 +620,115 @@ h3 {
 
 /* --- 7. About ----------------------------------------------------------- */
 
+/* One paragraph, set at reading width. The association does not need
+   introducing to most of the people who land here — this is for the ones
+   it does: prospective students, other clubs, people from outside AUC. */
 .about {
   background: var(--navy-deep);
   border-bottom: 1px solid var(--rule);
 }
 
-/* Asymmetric: a marginal note in the narrow column, the statement in the
-   wide one — the layout of an annotated proof. */
-.about-grid {
+.about-body {
+  max-width: 62ch;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.1fr);
-  gap: clamp(2rem, 6vw, 5rem);
-  align-items: start;
+  gap: 1.1rem;
 }
 
-.about-note {
-  color: var(--text-faint);
-  border-left: 2px solid var(--purple);
-  padding-left: 1rem;
-}
-
-.about h2 {
-  margin-bottom: clamp(1.5rem, 3vw, 2rem);
-}
-
-@media (max-width: 820px) {
-  .about-grid { grid-template-columns: 1fr; }
-}
-
-/* --- 8. Pillars — the discipline table --------------------------------- */
-
-.pillars-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: clamp(2.5rem, 5vw, 4rem);
-}
-
-.pillars-glyphs {
-  font-family: var(--display);
-  font-size: clamp(1.4rem, 2.5vw, 2rem);
-  color: var(--text-faint);
-  letter-spacing: 0.3em;
-}
-
-.pillars-table {
-  border-top: 1px solid var(--rule-strong);
-}
-
-.pillar-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: clamp(4.5rem, 9vw, 7rem) minmax(0, 0.62fr) minmax(0, 1fr);
-  gap: clamp(1rem, 3vw, 2.5rem);
-  align-items: center;
-  padding: clamp(1.5rem, 3vw, 2.25rem) 0;
-  border-bottom: 1px solid var(--rule);
-  isolation: isolate;
-}
-
-/* Hover floods the row, bleeding past the container edges so the fill
-   reads full-bleed while the text stays on the grid. */
-.pillar-row::before {
-  content: "";
-  position: absolute;
-  inset: 0 calc(var(--gutter) * -1);
-  z-index: -1;
-  background: var(--navy-lift);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.55s var(--ease-ink);
-}
-
-.pillar-row:hover::before {
-  transform: scaleX(1);
-}
-
-/* Each discipline keeps its own brand colour, as in the logo. */
-.pillar-symbol {
-  font-family: var(--display);
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  line-height: 1;
-  letter-spacing: -0.02em;
-  transition: transform 0.55s var(--ease-out);
-}
-
-.pillar-m .pillar-symbol { color: var(--purple); }
-.pillar-ax .pillar-symbol { color: var(--purple-soft); }
-.pillar-d .pillar-symbol { color: var(--blue-accent); }
-.pillar-int .pillar-symbol { color: var(--blue); }
-
-.pillar-row:hover .pillar-symbol {
-  transform: translateX(0.4rem);
-}
-
-.pillar-row h3 {
+.about-body p {
   margin: 0;
-  font-size: clamp(1.1rem, 1.8vw, 1.4rem);
-  line-height: 1.15;
-}
-
-.pillar-row p {
-  margin: 0;
+  font-size: clamp(1rem, 1.4vw, 1.12rem);
   color: var(--text-muted);
-  font-size: 0.95rem;
 }
 
-@media (max-width: 760px) {
-  .pillar-row {
-    grid-template-columns: clamp(3.5rem, 14vw, 5rem) minmax(0, 1fr);
-    align-items: start;
-    row-gap: 0.5rem;
-  }
-
-  .pillar-row p { grid-column: 2; }
+.about-body p:first-child {
+  color: var(--text);
 }
 
-/* --- 9. Activities — the staircase ------------------------------------- */
+/* --- 8. Semester calendar ----------------------------------------------- */
 
 /* The one Neutral-ground section: a deliberate light break in a navy page,
-   using the guide's background colour. */
-.activities {
+   using the guide's background colour. It falls on the calendar because
+   that is the thing people actually come back to check. */
+.calendar {
   background: var(--neutral);
   color: var(--navy);
 }
 
-.activities .section-mark {
-  color: color-mix(in srgb, var(--navy) 62%, transparent);
+/* Muted navy rather than a brand accent for every small text on this
+   ground: purple lands at 3.0:1 on Neutral and Secondary Blue at 3.2:1,
+   so neither may carry label-sized type. The accents stay in the rules. */
+.calendar .section-mark {
+  color: color-mix(in srgb, var(--navy) 75%, transparent);
 }
 
-.activities .section-mark::after {
+.calendar .section-mark::after {
   background: color-mix(in srgb, var(--navy) 24%, transparent);
 }
 
-.activities .section-mark .num {
-  color: var(--blue);
+.calendar .section-mark .num {
+  color: var(--navy);
 }
 
-.activities h2 {
-  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+.calendar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--navy) 28%, transparent);
 }
 
-.activity-row {
+.calendar-note {
+  color: color-mix(in srgb, var(--navy) 78%, transparent);
+}
+
+.calendar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The date gets its own column and never wraps into the title — a reader
+   scanning for "when" should only have to read down one edge. */
+.event-row {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
-  gap: clamp(1rem, 3vw, 2rem);
+  grid-template-columns: clamp(4.5rem, 9vw, 7rem) minmax(0, 1fr);
+  gap: clamp(1rem, 3vw, 2.5rem);
   align-items: baseline;
   padding-block: clamp(1.25rem, 2.5vw, 1.9rem);
   border-bottom: 1px solid color-mix(in srgb, var(--navy) 18%, transparent);
-  transition: padding-left 0.5s var(--ease-out);
 }
 
-/* Each entry steps further right than the last — the list descends rather
-   than stacking flat. */
-.activity-row:nth-child(2) { padding-left: clamp(0rem, 2vw, 2.5rem); }
-.activity-row:nth-child(3) { padding-left: clamp(0rem, 4vw, 5rem); }
-.activity-row:nth-child(4) { padding-left: clamp(0rem, 6vw, 7.5rem); }
-
-.activity-row:hover { padding-left: clamp(0.5rem, 3vw, 3rem); }
-.activity-row:nth-child(2):hover { padding-left: clamp(1rem, 5vw, 5.5rem); }
-.activity-row:nth-child(3):hover { padding-left: clamp(1.5rem, 7vw, 8rem); }
-.activity-row:nth-child(4):hover { padding-left: clamp(2rem, 9vw, 10.5rem); }
-
-.activity-row .mark {
+.event-date {
   font-family: var(--body);
   font-weight: 500;
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--navy);
-  opacity: 0.72;
+  white-space: nowrap;
 }
 
-.activity-row p {
+.event-body h3 {
   margin: 0;
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: clamp(1.05rem, 2.1vw, 1.6rem);
-  line-height: 1.32;
-  letter-spacing: -0.015em;
-  max-width: 34ch;
+  font-size: clamp(1.05rem, 2vw, 1.5rem);
+  line-height: 1.2;
+}
+
+.event-body p {
+  margin: 0.45rem 0 0;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--navy) 78%, transparent);
+  max-width: 54ch;
 }
 
 @media (max-width: 620px) {
-  .activity-row,
-  .activity-row:nth-child(2),
-  .activity-row:nth-child(3),
-  .activity-row:nth-child(4) { padding-left: 0; }
-
-  .activity-row:hover,
-  .activity-row:nth-child(2):hover,
-  .activity-row:nth-child(3):hover,
-  .activity-row:nth-child(4):hover { padding-left: 0.5rem; }
+  .event-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
 }
 
 /* --- 10. Join ----------------------------------------------------------- */
@@ -994,35 +903,166 @@ h3 {
 
 /* --- 13. Inner-page masthead -------------------------------------------- */
 
-/* Routes other than the landing page open with this. It keeps the section
-   rhythm — no background, so the fixed lattice shows through, as on `hero`
-   and `pillars`. */
+/* Inner routes are documents, not landing-page sections. Someone opens /blog
+   or /syllabi to find one particular thing, so the masthead is deliberately
+   short — a highlight bar, a title two steps down from the landing page's
+   display sizes, a lead, and then the toolbar — and the content starts inside
+   the first screen. No background here either, so the fixed lattice shows
+   through exactly as it does on the hero. */
 
 .page-head {
-  padding-top: clamp(8rem, 16vw, 12rem);
-  padding-bottom: clamp(2rem, 5vw, 3.5rem);
+  padding-top: clamp(6.5rem, 12vw, 9rem);
+  padding-bottom: 0;
+}
+
+/* The section mark's job, minus the full-width rule: on a page whose content
+   is a stack of bordered cards, a second horizontal rule up here reads as a
+   stray divider. */
+.page-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--text-faint);
+}
+
+.page-eyebrow::before {
+  content: "";
+  width: clamp(1.5rem, 4vw, 2.5rem);
+  height: 2px;
+  background: var(--purple);
+  flex: none;
+}
+
+.page-eyebrow .num {
+  color: var(--purple-soft);
 }
 
 .page-head h1 {
   font-family: var(--display);
   font-weight: 700;
-  font-size: clamp(2.3rem, 6vw, 4.5rem);
-  line-height: 1.02;
+  font-size: clamp(1.95rem, 4.4vw, 3.1rem);
+  line-height: 1.06;
   letter-spacing: -0.02em;
-  margin: 0.9rem 0 0;
-  max-width: 18ch;
+  margin: clamp(0.9rem, 2vw, 1.25rem) 0 0;
+  max-width: 20ch;
 }
 
-.page-head .section-lead {
-  margin-top: 1.5rem;
+.page-lead {
+  margin: 1rem 0 0;
+  font-size: clamp(1rem, 1.4vw, 1.12rem);
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 58ch;
 }
 
 .page-head-actions {
   margin-top: 2rem;
 }
 
+/* The bar that closes the masthead: counts on one side, whatever narrows the
+   list on the other. It is the only rule in the head, which is what makes it
+   read as the boundary between "what this page is" and "what is on it". */
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: clamp(2rem, 4vw, 3rem);
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--rule);
+}
+
+.page-toolbar .micro {
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.toolbar-search {
+  display: grid;
+  gap: 0.45rem;
+  flex: 1 1 18rem;
+  max-width: 26rem;
+}
+
+.toolbar-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* A filter that shows its state without a dropdown: at this count the whole
+   set of levels is shorter than the select that would hide it. */
+.chip-toggle {
+  font-family: var(--body);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  cursor: pointer;
+  transition: color 0.3s var(--ease-out), border-color 0.3s var(--ease-out),
+    background-color 0.3s var(--ease-out);
+}
+
+.chip-toggle:hover {
+  color: var(--text);
+  border-color: var(--blue-accent);
+}
+
+.chip-toggle[aria-pressed="true"] {
+  color: var(--off-white);
+  background: var(--navy-lift);
+  border-color: var(--purple);
+}
+
+.toolbar-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.toolbar-switch input {
+  accent-color: var(--purple);
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Count on the left, escape hatch on the right. */
+.result-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
+}
+
+.result-count,
+.result-note {
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.link-button {
+  font-family: var(--body);
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--purple-soft);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .page-body {
-  padding-top: 0;
+  padding-top: clamp(2.5rem, 5vw, 3.5rem);
 }
 
 /* Holds the viewport height while a split route chunk loads, so the footer
@@ -1056,23 +1096,38 @@ h3 {
 
 /* --- 15. Blog ----------------------------------------------------------- */
 
-/* Same ruled-table construction as `.pillars-table` — a list of rows
-   separated by hairlines, with the hover fill bleeding past the gutter. */
+/* The index was a ruled list, like the calendar. A calendar row is a date and
+   a line about it; a post is a date, a title, and a paragraph, and at that
+   weight hairline rows run together — the reader cannot see where one post
+   ends. So posts are bordered cards on the deep navy, one object each, and
+   the newest takes the full width so the thing most people came for is the
+   thing they land on. */
 
-.post-list,
-.course-list {
-  border-top: 1px solid var(--rule);
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+  gap: clamp(0.9rem, 2vw, 1.4rem);
 }
 
-.post-row {
+.post-card {
   position: relative;
-  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+  background: var(--navy-deep);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  transition: border-color 0.4s var(--ease-out);
 }
 
-.post-row::before {
+.post-card-lead {
+  grid-column: 1 / -1;
+}
+
+/* The site's one hover gesture. It is on a pseudo-element, not the card, so
+   it does not fight the transform Reveal animates. */
+.post-card::before {
   content: "";
   position: absolute;
-  inset: 0 calc(var(--gutter) * -1);
+  inset: 0;
   background: var(--navy-lift);
   transform: scaleX(0);
   transform-origin: left;
@@ -1080,59 +1135,129 @@ h3 {
   z-index: 0;
 }
 
-.post-row:hover::before,
-.post-row:focus-within::before {
+.post-card:hover::before,
+.post-card:focus-within::before {
   transform: scaleX(1);
 }
 
-.post-row-link {
-  position: relative;
-  z-index: 1;
-  display: block;
-  padding: clamp(1.75rem, 4vw, 2.75rem) 0;
+.post-card:hover,
+.post-card:focus-within {
+  border-color: var(--purple);
 }
 
-.post-date {
+/* The whole card is the target: there is nothing else in it to click, and a
+   title-sized hit area is a poor one on a phone. */
+.post-card-link {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  padding: clamp(1.35rem, 2.5vw, 2rem);
+}
+
+.post-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0;
   color: var(--text-faint);
 }
 
-.post-row h2 {
+/* `max-width: none` undoes the 18ch cap `.section h2` puts on landing-page
+   headings — these sit in a column that is already the measure. */
+.post-card h2 {
   font-family: var(--display);
   font-weight: 600;
-  font-size: clamp(1.35rem, 3vw, 2rem);
-  line-height: 1.15;
-  margin: 0.6rem 0 0;
-  max-width: 28ch;
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
+  line-height: 1.2;
+  max-width: none;
+  margin: 0;
   transition: color 0.4s var(--ease-out);
 }
 
-.post-row:hover h2 {
+.post-card-lead h2 {
+  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+  max-width: 24ch;
+}
+
+.post-card:hover h2 {
   color: var(--purple-soft);
 }
 
-.post-row p {
-  margin-top: 0.85rem;
+.post-card-excerpt {
+  margin: 0;
   color: var(--text-muted);
   max-width: 62ch;
 }
 
-.post-more {
-  display: inline-block;
-  margin-top: 1.1rem;
+.post-card-lead .post-card-excerpt {
+  font-size: clamp(1rem, 1.4vw, 1.1rem);
+}
+
+/* `margin-top: auto` floors it, so the cards in a row end on the same line
+   however long the excerpts above them run. */
+.post-card-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
   color: var(--purple-soft);
+}
+
+.post-card-more .arrow {
+  display: inline-block;
+  transition: transform 0.4s var(--ease-out);
+}
+
+.post-card:hover .post-card-more .arrow {
+  transform: translateX(4px);
+}
+
+/* The lead card is as wide as the page, and a single column of text down its
+   left edge leaves half of it empty. Above this width it splits: title on the
+   left at display size, the summary and the link beside it. */
+@media (min-width: 900px) {
+  .post-card-lead .post-card-link {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "meta  meta"
+      "title excerpt"
+      "title more";
+    column-gap: clamp(2rem, 5vw, 4rem);
+    padding: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  .post-card-lead .post-card-meta { grid-area: meta; }
+  .post-card-lead h2 { grid-area: title; }
+  .post-card-lead .post-card-excerpt { grid-area: excerpt; }
+
+  .post-card-lead .post-card-more {
+    grid-area: more;
+    align-self: start;
+    margin-top: 0;
+    padding-top: 0.4rem;
+  }
 }
 
 /* --- 16. Post ----------------------------------------------------------- */
 
 .post {
-  padding-top: clamp(7rem, 14vw, 10rem);
+  padding-top: clamp(6rem, 11vw, 8.5rem);
 }
 
+/* Measure, not layout width: this is the one page on the site that is read
+   line by line, and past ~70 characters the eye loses the line return. */
 .post-inner {
-  max-width: 68ch;
+  max-width: 70ch;
 }
 
 .post-back {
+  display: inline-block;
   color: var(--text-faint);
   transition: color 0.3s var(--ease-out);
 }
@@ -1142,26 +1267,47 @@ h3 {
   color: var(--purple-soft);
 }
 
-.post-head h1 {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: clamp(2rem, 5.2vw, 3.4rem);
-  line-height: 1.06;
-  letter-spacing: -0.02em;
-  margin: 1.25rem 0 0.75rem;
-}
-
 .post-head {
-  padding-bottom: 2rem;
+  padding-bottom: clamp(1.75rem, 3vw, 2.5rem);
   border-bottom: 1px solid var(--rule);
 }
 
-/* Long-form body copy. Wider line height and real spacing between blocks —
-   this is the one place on the site that is read rather than scanned. */
-.prose {
-  padding-top: 2.5rem;
-  line-height: 1.8;
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: clamp(1.25rem, 3vw, 2rem) 0 0;
+  color: var(--text-faint);
+}
+
+.post-head h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2rem, 4.6vw, 3.1rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0.85rem 0 0;
+}
+
+/* The excerpt again, as a standfirst — it is already written as a summary of
+   the post, so this costs the author nothing and tells a reader arriving from
+   a shared link what they are about to read. */
+.post-standfirst {
+  margin: 1.1rem 0 0;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  line-height: 1.55;
   color: var(--text-muted);
+  max-width: 54ch;
+}
+
+/* Long-form body copy. Set brighter and a step larger than the rest of the
+   site: `--text-muted` is right for a paragraph under a heading and wrong for
+   eight hundred words of it. */
+.prose {
+  padding-top: clamp(2rem, 4vw, 2.75rem);
+  font-size: clamp(1.02rem, 1.3vw, 1.1rem);
+  line-height: 1.8;
+  color: color-mix(in srgb, var(--off-white) 86%, transparent);
 }
 
 .prose > * + * {
@@ -1232,79 +1378,186 @@ h3 {
   padding: 0;
 }
 
+/* Where the post ends, the next one begins — a reader who finished should not
+   have to go back to the index to find it. */
+/* Two fixed halves rather than auto-fit: the older post keeps the right-hand
+   column even when it is the only link, which is where a reader looks for
+   "next" and where it would sit if the newer one existed. */
+.post-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+  padding-top: clamp(1.5rem, 3vw, 2rem);
+  border-top: 1px solid var(--rule);
+}
+
+.post-nav-link {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--navy-deep);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  transition: border-color 0.3s var(--ease-out), background-color 0.3s var(--ease-out);
+}
+
+.post-nav-link:hover,
+.post-nav-link:focus-visible {
+  border-color: var(--purple);
+  background: var(--navy-lift);
+}
+
+.post-nav-link .micro {
+  color: var(--text-faint);
+}
+
+.post-nav-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  line-height: 1.3;
+}
+
+.post-nav-older {
+  grid-column: 2;
+  justify-items: end;
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  .post-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .post-nav-older {
+    grid-column: auto;
+    justify-items: start;
+    text-align: left;
+  }
+}
+
 /* --- 17. Syllabus archive ------------------------------------------------ */
 
-.course-row {
+/* Same reasoning as the blog index: a course is a block of information — a
+   code, a title, a level, and a set of files — not a table row, and hairlines
+   between blocks that tall stop separating them. Each course is a card, and
+   the terms inside it are the buttons the whole page exists to offer. */
+
+.course-list {
   display: grid;
-  grid-template-columns: minmax(8rem, 12rem) 1fr;
-  gap: clamp(1rem, 4vw, 3rem);
-  padding: clamp(1.5rem, 3.5vw, 2.25rem) 0;
-  border-bottom: 1px solid var(--rule);
+  gap: clamp(0.75rem, 1.5vw, 1.1rem);
+}
+
+.course-card {
+  background: var(--navy-deep);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: clamp(1.25rem, 2.4vw, 1.75rem);
+  transition: border-color 0.3s var(--ease-out);
+}
+
+.course-card:hover,
+.course-card:focus-within {
+  border-color: var(--rule-strong);
+}
+
+.course-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem 1.5rem;
+}
+
+/* Takes the free space, so the title sets on one line until it genuinely
+   runs out of room; min-width: 0 then lets it wrap inside the cell rather
+   than pushing the level chip off the card. */
+.course-id {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .course-code {
-  display: block;
+  margin: 0;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
   color: var(--purple-soft);
-  letter-spacing: 0.02em;
+}
+
+/* Same as the post cards: the 18ch cap from `.section h2` would break a
+   course title over two lines in the middle of an otherwise scannable row. */
+.course-card h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+  line-height: 1.25;
+  max-width: none;
+  margin: 0.35rem 0 0;
 }
 
 .course-level {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--text-faint);
-}
-
-.course-body h2 {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: clamp(1.1rem, 2.4vw, 1.4rem);
-  line-height: 1.25;
   margin: 0;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--text-faint);
+  white-space: nowrap;
 }
 
 .course-none {
-  margin-top: 0.75rem;
+  margin: 1.1rem 0 0;
   color: var(--text-faint);
 }
 
+/* A grid of fixed-width tiles, not a wrapping row: the terms line up across
+   courses, so scanning down the page for "Fall 2026" is one movement. Capped
+   at 16rem so a course with one file does not get a tile the width of the
+   card, and a course with six does not get six slivers. */
 .syllabus-files {
   list-style: none;
-  margin: 1rem 0 0;
+  margin: 1.1rem 0 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 16rem));
+  justify-content: start;
   gap: 0.6rem;
 }
 
 .syllabus-link {
-  display: inline-block;
+  display: grid;
+  gap: 0.25rem;
+  height: 100%;
   border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.9rem;
+  border-radius: 3px;
+  padding: 0.7rem 0.95rem;
   color: var(--text);
   transition: border-color 0.3s var(--ease-out), color 0.3s var(--ease-out),
     background-color 0.3s var(--ease-out);
 }
 
-.syllabus-link .micro {
+.syllabus-term {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* The filename only has to confirm what lands in Downloads, so it breaks
+   rather than widening the cell. It is the one `.micro` on the site that is
+   not set in caps: a filename is recognised by its own casing, and the wide
+   tracking pushes it onto a second line for no gain. */
+.syllabus-file {
   color: var(--text-faint);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 
 .syllabus-link:hover,
 .syllabus-link:focus-visible {
   border-color: var(--purple);
   background: var(--navy-lift);
-}
-
-@media (max-width: 620px) {
-  .course-row {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
 }
 
 /* --- 18. Forms and fields ------------------------------------------------ */
@@ -1364,17 +1617,6 @@ textarea.field {
 .form .btn[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.filter-bar {
-  margin-top: 2.5rem;
-  max-width: 28rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.filter-bar label {
-  color: var(--text-faint);
 }
 
 /* A field no sighted user sees and no keyboard reaches. Off-screen rather
@@ -1454,7 +1696,8 @@ textarea.field {
   .curve-label { opacity: 1; }
   .hero-watermark,
   .hero-circle { animation: none; }
-  /* The row wipes are decorative; with motion reduced they should simply
+  /* The card wipes are decorative; with motion reduced they should simply
      not run rather than snap. */
-  .post-row::before { transition: none; }
+  .post-card::before { transition: none; }
+  .post-card-more .arrow { transition: none; }
 }

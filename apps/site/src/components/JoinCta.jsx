@@ -8,11 +8,11 @@ function JoinCta() {
       <div className="container">
         <Reveal className="cta-band">
           <div>
-            <p className="micro">§ 04 — Membership</p>
+            <p className="micro">§ 03 — Newsletter</p>
             <h2>
-              Ready to be part of <em>it?</em>
+              Keep an eye on <em>the term.</em>
             </h2>
-            <p>Join the MADS community and be first to hear about events.</p>
+            <p>One email when something is happening. Nothing else.</p>
           </div>
           <NewsletterSignup />
         </Reveal>

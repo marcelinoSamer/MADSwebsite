@@ -19,6 +19,20 @@ describe('Blog', () => {
     expect(screen.queryByText(/spring speaker series/i)).not.toBeInTheDocument()
   })
 
+  it('gives each post its date and reading time', async () => {
+    renderWithProviders(<Blog />)
+
+    const card = (await screen.findByRole('heading', { name: /first datathon/i })).closest('article')
+    expect(card).toHaveTextContent('12 September 2026')
+    expect(card).toHaveTextContent(/\d+ min read/)
+  })
+
+  it('counts what is published', async () => {
+    renderWithProviders(<Blog />)
+
+    expect(await screen.findByText('2 posts')).toBeInTheDocument()
+  })
+
   it('shows an empty state rather than a bare page when nothing is published', async () => {
     const seed = createSeed()
     seed.posts = []

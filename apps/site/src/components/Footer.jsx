@@ -11,7 +11,7 @@ function Footer() {
         </div>
         <ul className="footer-links micro">
           <li><SectionLink hash="#about">About</SectionLink></li>
-          <li><SectionLink hash="#pillars">What we do</SectionLink></li>
+          <li><SectionLink hash="#calendar">Calendar</SectionLink></li>
           <li><Link to="/blog">Blog</Link></li>
           <li><Link to="/syllabi">Syllabi</Link></li>
           <li><Link to="/forms/feedback">Feedback</Link></li>

@@ -4,8 +4,7 @@ import SectionLink from './SectionLink'
 
 const SECTIONS = [
   { hash: '#about', label: 'About' },
-  { hash: '#pillars', label: 'What we do' },
-  { hash: '#activities', label: 'Activities' },
+  { hash: '#calendar', label: 'Calendar' },
 ]
 
 const PAGES = [

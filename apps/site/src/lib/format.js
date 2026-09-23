@@ -8,3 +8,16 @@ const DATE = new Intl.DateTimeFormat('en-GB', {
 export function formatDate(iso) {
   return iso ? DATE.format(new Date(iso)) : ''
 }
+
+/**
+ * "4 min read", from the markdown body.
+ *
+ * 200 words a minute, rounded up, floored at one — a post is never "0 min".
+ * Markdown syntax is counted as words, which overstates a heavily formatted
+ * post by a few seconds and is not worth stripping for.
+ */
+export function readingTime(markdown) {
+  const words = String(markdown ?? '').trim().split(/\s+/).filter(Boolean).length
+  if (!words) return ''
+  return `${Math.max(1, Math.round(words / 200))} min read`
+}

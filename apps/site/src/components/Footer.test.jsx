@@ -7,7 +7,7 @@ describe('Footer', () => {
   it('renders footer navigation links', () => {
     renderWithProviders(<Footer />)
     expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /what we do/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^join$/i })).toBeInTheDocument()
   })
 
