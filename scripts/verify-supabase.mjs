@@ -21,6 +21,7 @@ let failures = 0
 const stamp = Date.now()
 const slug = `verify-${stamp}`
 const probeEmail = `verify+${stamp}@aucegypt.edu`
+const probeMember = `verify-member+${stamp}@aucegypt.edu`
 const probeMessage = `Verification run ${stamp}.`
 
 async function check(label, fn) {
@@ -72,7 +73,17 @@ await refuses('cannot list internal forms', () => anon.forms.list({ audience: 'i
 await refuses('cannot read the member roster', () => anon.members.list())
 await refuses('cannot create a post', () => anon.posts.create({ slug, title: 'Nope' }))
 
+await refuses('cannot create an account', () =>
+  anon.members.create({
+    fullName: 'Nope',
+    email: probeMember,
+    roleId: 'role-president',
+    password: 'not-a-chance-at-all',
+  }),
+)
+
 console.log('\nSigned-in admin:')
+let adminId = null
 await check('signs in', async () => {
   const session = await admin.auth.signIn({
     email: env.MADS_EMAIL,
@@ -82,6 +93,7 @@ await check('signs in', async () => {
   if (session.role.permissions.length !== 8) {
     throw new Error(`expected 8 permissions, got ${session.role.permissions.length}`)
   }
+  adminId = session.user.id
 })
 
 let postId = null
@@ -145,7 +157,38 @@ await check('reads the member roster', async () => {
   if (members.length < 2) throw new Error(`expected 2 accounts, got ${members.length}`)
 })
 
+// Account management — the admin-users Edge Function, plus the two triggers
+// in 0004 that a policy could not express. A failure here usually means the
+// function is not deployed; see README → Managing accounts.
+let probeMemberId = null
+await check('creates an account through the admin-users function', async () => {
+  const member = await admin.members.create({
+    fullName: 'Verification Probe',
+    email: probeMember,
+    roleId: 'role-writer',
+    password: `verify-${stamp}-temporary`,
+  })
+  probeMemberId = member.id
+  if (member.roleId !== 'role-writer') throw new Error(`role came back as ${member.roleId}`)
+})
+
+await check('changes that account’s role', async () => {
+  if (!probeMemberId) throw new Error('nothing was created to promote')
+  const member = await admin.members.update(probeMemberId, { roleId: 'role-content' })
+  if (member.roleId !== 'role-content') throw new Error(`role came back as ${member.roleId}`)
+})
+
+await refuses('cannot change its own role (profiles_role_guard)', () =>
+  admin.members.update(adminId, { roleId: 'role-writer' }),
+)
+
+await refuses('cannot delete its own account', () => admin.members.remove(adminId))
+
 console.log('\nCleanup:')
+
+await check('deletes the probe account', async () => {
+  if (probeMemberId) await admin.members.remove(probeMemberId)
+})
 await check('deletes the verification post', () => admin.posts.remove(postId))
 
 await check('removes the probe subscriber', async () => {

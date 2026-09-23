@@ -144,6 +144,12 @@ function toDataError(error, fallback = 'Something went wrong.') {
   if (code === '23503') {
     return new DataError(CODES.CONFLICT, 'Something still references this. Remove those first.')
   }
+  // 23514 = check_violation, raised by profiles_admin_floor when a change
+  // would leave nobody able to manage members. Its message is written to be
+  // shown as-is.
+  if (code === '23514') {
+    return new DataError(CODES.CONFLICT, message)
+  }
   if (code === 'PGRST116') {
     return new DataError(CODES.NOT_FOUND, 'Not found.')
   }
@@ -438,10 +444,70 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
     },
   }
 
+  /**
+   * Call the `admin-users` Edge Function.
+   *
+   * Creating and deleting an account touches `auth.users`, which only the
+   * service-role key may do — and that key can never be shipped to a browser.
+   * So those two operations are the one place in this adapter that does not
+   * go straight to PostgREST. The function verifies the caller's JWT and
+   * re-checks `members:write` against the same `has_permission()` every
+   * policy uses; it is not a way around RLS, only around the key.
+   *
+   * It answers failures as `{ error: { code, message } }` using the DataError
+   * codes, so the panel branches on the same set as every other call.
+   */
+  async function invokeAdminUsers(action, payload) {
+    const { data, error } = await sb.functions.invoke('admin-users', {
+      body: { action, ...payload },
+    })
+    if (!error) return data
+
+    // supabase-js buries a non-2xx body in error.context (a Response).
+    let body = null
+    try {
+      body = await error.context?.json?.()
+    } catch {
+      // Non-JSON body — a gateway error or the function failing to boot.
+    }
+
+    const code = body?.error?.code
+    const message = body?.error?.message ?? error.message
+    if (code === 'not_deployed' || /Function not found/i.test(message)) {
+      throw new DataError(
+        CODES.NOT_CONFIGURED,
+        'The admin-users function is not deployed. See README → Managing accounts.',
+      )
+    }
+    throw new DataError(
+      Object.values(CODES).includes(code) ? code : CODES.INVALID,
+      message,
+    )
+  }
+
   const members = {
     list: () => run(sb.from('profiles').select('*').order('full_name'), ROW.member.toCamel),
+
+    create: async (input) => {
+      const data = await invokeAdminUsers('create', {
+        email: input.email,
+        fullName: input.fullName,
+        roleId: input.roleId,
+        password: input.password,
+      })
+      return ROW.member.toCamel(data.member)
+    },
+
+    // A role change is a plain UPDATE — profiles_write allows it, and the
+    // profiles_role_guard / profiles_admin_floor triggers refuse the two
+    // changes a policy cannot express.
     update: (id, patch) =>
       run(sb.from('profiles').update(ROW.member.toSnake(patch)).eq('id', id).select().single(), ROW.member.toCamel),
+
+    remove: async (id) => {
+      const data = await invokeAdminUsers('delete', { id })
+      return ROW.member.toCamel(data.member)
+    },
   }
 
   const roles = {

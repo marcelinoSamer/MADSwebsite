@@ -324,6 +324,90 @@ describe('mock adapter', () => {
     })
   })
 
+  describe('members', () => {
+    const NEW_MEMBER = {
+      fullName: 'Nour Hassan',
+      email: 'Nour@AUCegypt.edu',
+      roleId: 'role-writer',
+      password: 'temporary-one',
+    }
+
+    it('lets members:write add an account, normalising the address', async () => {
+      const president = await clientAs('role-president')
+      const member = await president.members.create(NEW_MEMBER)
+
+      expect(member.email).toBe('nour@aucegypt.edu')
+      expect(member.roleId).toBe('role-writer')
+      expect(await president.members.list()).toHaveLength(4)
+    })
+
+    it('refuses an account for an address that already has one', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.members.create({ ...NEW_MEMBER, email: 'MADS@aucegypt.edu' }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+
+    it('refuses a temporary password that is too short to be worth setting', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.members.create({ ...NEW_MEMBER, password: 'short' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    it('refuses a role that does not exist', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.members.create({ ...NEW_MEMBER, roleId: 'role-supreme-leader' }),
+      ).rejects.toMatchObject({ code: CODES.NOT_FOUND })
+    })
+
+    it('keeps a role that cannot manage members out of all of it', async () => {
+      const content = await clientAs('role-content')
+
+      await expect(content.members.create(NEW_MEMBER)).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+      await expect(content.members.remove('user-mads')).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+    })
+
+    it('deletes an account without taking their posts with it', async () => {
+      const president = await clientAs('role-president')
+      await president.members.remove('user-mads')
+
+      expect((await president.members.list()).some((m) => m.id === 'user-mads')).toBe(false)
+      const post = await president.posts.bySlug('datathon-2026-recap')
+      expect(post.authorId).toBeNull()
+    })
+
+    it('will not let you delete or demote yourself', async () => {
+      const president = await clientAs('role-president')
+      const [me] = (await president.members.list()).filter((m) => m.id === 'user-test')
+
+      await expect(president.members.remove(me.id)).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+      await expect(
+        president.members.update(me.id, { roleId: 'role-writer' }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+
+    it('will not let the last members:write holder be demoted away', async () => {
+      const president = await clientAs('role-president')
+      // Clear the two seeded presidents, leaving only the signed-in one.
+      await president.members.update('user-mads', { roleId: 'role-writer' })
+      await president.members.update('user-admin', { roleId: 'role-writer' })
+
+      // Which then makes their own role the floor: stripping it from the
+      // role itself is the remaining way out, and it is refused too.
+      await expect(
+        president.roles.update('role-president', { permissions: [PERMISSIONS.POSTS_READ] }),
+      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+    })
+  })
+
   it('rejects a duplicate post slug', async () => {
     const content = await clientAs('role-content')
     await expect(

@@ -26,8 +26,9 @@ is written up in `CLAUDE.md`.
 | Supabase | project `mads`, `eu-central-1` |
 
 Admin sign-in uses the two accounts in `.env` (`MADS_EMAIL` / `ADMIN_EMAIL`).
-Both are President — full access. Change a role under **Members**, or rotate a
-password by editing `.env` and re-running `npm run db:seed`.
+Both are President — full access. Everyone else is added from the panel itself,
+under **Members**; see [Managing accounts](#managing-accounts). Rotate one of the
+two founding passwords by editing `.env` and re-running `npm run db:seed`.
 
 ## Running it
 
@@ -99,6 +100,43 @@ curl -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/databas
 
 Write migrations idempotently (`create ... if not exists`, `drop policy if
 exists`) so re-running is harmless.
+
+### Managing accounts
+
+A President manages the whole roster from **Members**: add someone with a role
+and a temporary password, change anyone's role, delete an account outright.
+
+Changing a role is a plain `UPDATE` through RLS. Adding and deleting are not —
+they write to `auth.users`, which only the service-role key may touch, and that
+key can never reach a browser. So those two go through one Edge Function,
+`supabase/functions/admin-users/`, which verifies the caller's JWT and re-checks
+`has_permission('members:write')` **in the database, as that user**, before it
+uses the key. It is a way around the key, not around RLS.
+
+It has to be deployed once, and again whenever that file changes:
+
+```bash
+set -a; source .env; set +a
+SUPABASE_ACCESS_TOKEN=$SUPABASE_TOKEN \
+  npx supabase@latest functions deploy admin-users --project-ref $SUPABASE_PROJECT_REF
+```
+
+`npx` rather than a dependency — nothing in the repo needs the CLI otherwise,
+and this is the one job the Management API's SQL endpoint cannot do. No secrets
+to configure: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
+are injected into every function automatically.
+
+Two rules sit under all of this, as triggers in `0004_member_admin.sql` rather
+than in the function, so they hold on any path into the database:
+
+- **Nobody changes their own role.** Demoting yourself locks you out of the page
+  that could undo it.
+- **Someone must always hold `members:write`** — enforced on deleting a profile,
+  on demoting one, and on editing the permission list of the last role that
+  carries it. Without this floor, recovery means a service-role key on a laptop.
+
+`npm run db:verify` exercises all of it, including the function, and deletes the
+account it creates.
 
 ## Deploying
 

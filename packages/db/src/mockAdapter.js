@@ -8,6 +8,15 @@ const STORAGE_KEY = 'mads.mock.db'
 /** Password for every seeded account while there is no real auth provider. */
 export const DEV_PASSWORD = 'mads'
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+/**
+ * Shortest password the Edge Function will accept, mirrored here so the mock
+ * refuses what the real backend would. Supabase's own floor is 6; this is the
+ * project's, and the admin panel states it on the form.
+ */
+export const MIN_PASSWORD_LENGTH = 10
+
 const clone = (value) => (value == null ? value : JSON.parse(JSON.stringify(value)))
 const newId = () => globalThis.crypto.randomUUID()
 const now = () => new Date().toISOString()
@@ -300,7 +309,7 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
     subscribe: (email, source = 'site') =>
       write(() => {
         const clean = String(email).trim().toLowerCase()
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
+        if (!EMAIL_RE.test(clean)) {
           throw new DataError(CODES.INVALID, 'That does not look like an email address.')
         }
         const existing = db.subscribers.find((s) => s.email === clean)
@@ -420,6 +429,27 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
       }),
   }
 
+  /**
+   * Refuse a change that would leave nobody able to manage members.
+   *
+   * `next` is the roster as it would be afterwards. Without this the last
+   * president can demote or delete themselves out of the only account that
+   * can undo it, and the fix is a service-role key on someone's laptop.
+   * The real backend enforces the same floor in the profiles_admin_floor
+   * trigger, so it holds whichever path the write arrives by.
+   */
+  function requireRemainingAdmin(next, roleTable = db.roles) {
+    const stillAdmin = next.some((member) =>
+      can(roleTable.find((r) => r.id === member.roleId), PERMISSIONS.MEMBERS_WRITE),
+    )
+    if (!stillAdmin) {
+      throw new DataError(
+        CODES.CONFLICT,
+        'Someone has to keep the ability to manage members. Give another member that role first.',
+      )
+    }
+  }
+
   const members = {
     list: () =>
       read(() => {
@@ -427,12 +457,99 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         return [...db.members].sort((a, b) => a.fullName.localeCompare(b.fullName))
       }),
 
-    update: (id, patch) =>
+    /**
+     * Add an account.
+     *
+     * Supabase does this through an Edge Function, because minting an auth
+     * user needs the service-role key and that can never reach a browser.
+     * The mock has no auth provider at all: the account it creates signs in
+     * with DEV_PASSWORD like every other seeded one, and `password` is
+     * validated and then discarded.
+     */
+    create: (input) =>
       write(() => {
         requirePermission(PERMISSIONS.MEMBERS_WRITE)
+
+        const email = String(input.email ?? '').trim().toLowerCase()
+        const fullName = String(input.fullName ?? '').trim()
+
+        if (!EMAIL_RE.test(email)) {
+          throw new DataError(CODES.INVALID, 'That does not look like an email address.')
+        }
+        if (!fullName) {
+          throw new DataError(CODES.INVALID, 'Give the new member a name.')
+        }
+        if (String(input.password ?? '').length < MIN_PASSWORD_LENGTH) {
+          throw new DataError(
+            CODES.INVALID,
+            `The temporary password needs at least ${MIN_PASSWORD_LENGTH} characters.`,
+          )
+        }
+        find('roles', input.roleId)
+        if (db.members.some((m) => m.email.toLowerCase() === email)) {
+          throw new DataError(CODES.CONFLICT, `${email} already has an account.`)
+        }
+
+        const member = {
+          id: newId(),
+          email,
+          fullName,
+          roleId: input.roleId,
+          createdAt: now(),
+        }
+        db.members.push(member)
+        return member
+      }),
+
+    update: (id, patch) =>
+      write(() => {
+        const actor = requirePermission(PERMISSIONS.MEMBERS_WRITE)
         const member = find('members', id)
-        if (patch.roleId) find('roles', patch.roleId)
+
+        if (patch.roleId && patch.roleId !== member.roleId) {
+          find('roles', patch.roleId)
+          // Demoting yourself locks you out of this page, and there may be no
+          // other president left to undo it.
+          if (member.id === actor.id) {
+            throw new DataError(CODES.FORBIDDEN, 'You cannot change your own role.')
+          }
+          requireRemainingAdmin(
+            db.members.map((m) => (m.id === id ? { ...m, roleId: patch.roleId } : m)),
+          )
+        }
+
         Object.assign(member, patch)
+        return member
+      }),
+
+    /**
+     * Delete an account outright — on Supabase this removes the auth user, so
+     * the address is free to be invited again.
+     *
+     * Authorship is nulled rather than cascaded, matching `on delete set
+     * null` on posts, syllabi and submissions: someone leaving the board must
+     * not take the blog and the archive with them.
+     */
+    remove: (id) =>
+      write(() => {
+        const actor = requirePermission(PERMISSIONS.MEMBERS_WRITE)
+        const member = find('members', id)
+
+        if (member.id === actor.id) {
+          throw new DataError(CODES.FORBIDDEN, 'You cannot remove your own account.')
+        }
+        requireRemainingAdmin(db.members.filter((m) => m.id !== id))
+
+        db.members = db.members.filter((m) => m.id !== id)
+        db.posts.forEach((p) => {
+          if (p.authorId === id) p.authorId = null
+        })
+        db.syllabi.forEach((s) => {
+          if (s.uploadedBy === id) s.uploadedBy = null
+        })
+        db.submissions.forEach((s) => {
+          if (s.submittedBy === id) s.submittedBy = null
+        })
         return member
       }),
   }
@@ -444,6 +561,14 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
       write(() => {
         requirePermission(PERMISSIONS.MEMBERS_WRITE)
         const role = find('roles', id)
+        // Same floor as demoting a person: stripping members:write from the
+        // last role that carries it locks everyone out of this page.
+        if (patch.permissions) {
+          requireRemainingAdmin(
+            db.members,
+            db.roles.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+          )
+        }
         Object.assign(role, patch)
         return role
       }),

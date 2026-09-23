@@ -329,6 +329,17 @@ button {
   padding-block: 0.75rem;
 }
 
+/* A one-time secret shown in a confirmation — the temporary password on
+   Members. Monospace so an l and a 1 can be told apart when it is read out. */
+.state code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  background: var(--navy-deepest);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  user-select: all;
+}
+
 .state-note {
   color: var(--text-muted);
   border-left: 2px solid var(--blue-accent);

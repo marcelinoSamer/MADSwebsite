@@ -1,7 +1,7 @@
 import { createMockAdapter } from './mockAdapter.js'
 import { createSupabaseAdapter } from './supabaseAdapter.js'
 
-export { createMockAdapter, DEV_PASSWORD } from './mockAdapter.js'
+export { createMockAdapter, DEV_PASSWORD, MIN_PASSWORD_LENGTH } from './mockAdapter.js'
 export { AUDIENCES, AUDIENCE_LABELS, FIELD_TYPES } from './formRules.js'
 export { createSupabaseAdapter } from './supabaseAdapter.js'
 export { createSeed, withMember } from './seed.js'
