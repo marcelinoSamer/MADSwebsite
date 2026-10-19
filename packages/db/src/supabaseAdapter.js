@@ -219,7 +219,7 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
 
     const { data, error } = await sb
       .from('profiles')
-      .select('id, email, full_name, role_id, created_at, roles(id, name, description, permissions)')
+      .select('id, email, full_name, role_id, is_super, created_at, roles(id, name, description, permissions)')
       .eq('id', session.user.id)
       .single()
 
