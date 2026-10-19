@@ -115,6 +115,15 @@ Deno.serve(async (req) => {
 
     const { data: role } = await admin.from('roles').select('id').eq('id', roleId).maybeSingle()
     if (!role) return fail(400, 'invalid', 'Pick a role for the new member.')
+    // Checked before the auth user exists, so a refusal leaves nothing to undo.
+    // profiles_president_guard (0007) would refuse the profile insert anyway.
+    if (roleId === 'role-president') {
+      return fail(
+        403,
+        'forbidden',
+        'The President role belongs to the association account alone. Pick another role.',
+      )
+    }
 
     // email_confirm skips the confirmation mail, matching the seeding
     // script: these are staff accounts created by hand by someone who
@@ -168,6 +177,12 @@ Deno.serve(async (req) => {
       .eq('id', id)
       .maybeSingle()
     if (!profile) return fail(404, 'not_found', 'No such member.')
+
+    // profiles_president_guard (0007) refuses this on the cascade too, but
+    // deleteUser would report it as an opaque database error.
+    if (profile.is_super) {
+      return fail(403, 'forbidden', 'The President’s account cannot be removed.')
+    }
 
     // profiles_admin_floor would refuse this anyway when the cascade lands,
     // but a failed deleteUser reports it as an opaque database error. Check

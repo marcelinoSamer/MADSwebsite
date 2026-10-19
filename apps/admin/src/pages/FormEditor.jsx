@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { useQuery, useAction } from '@mads/db/react'
-import { PERMISSIONS, AUDIENCES, AUDIENCE_LABELS, FIELD_TYPES } from '@mads/db'
+import { useQuery, useAction, useCan } from '@mads/db/react'
+import {
+  PERMISSIONS,
+  AUDIENCES,
+  AUDIENCE_LABELS,
+  FIELD_TYPES,
+  CHOICE_TYPES,
+  SCALE_LIMITS,
+} from '@mads/db'
 import PageTitle from '../components/PageTitle'
 import AsyncState from '../components/AsyncState'
 import Gate from '../components/Gate'
@@ -17,14 +24,24 @@ const BLANK = {
   fields: [],
 }
 
+// Google Forms' own names, since that is what the board will look for.
 const TYPE_LABELS = {
-  text: 'Short text',
-  textarea: 'Long text',
+  text: 'Short answer',
+  textarea: 'Paragraph',
+  radio: 'Multiple choice',
+  checkbox: 'Checkboxes',
+  select: 'Dropdown',
+  scale: 'Linear scale',
   email: 'Email',
   number: 'Number',
   date: 'Date',
-  select: 'Choose one',
+  time: 'Time',
 }
+
+const MAX_POINTS = Array.from(
+  { length: SCALE_LIMITS.max[1] - SCALE_LIMITS.max[0] + 1 },
+  (_, i) => SCALE_LIMITS.max[0] + i,
+)
 
 const newField = () => ({
   id: globalThis.crypto.randomUUID(),
@@ -32,12 +49,17 @@ const newField = () => ({
   label: '',
   type: 'text',
   required: false,
+  help: '',
   options: [],
 })
 
 /** One question. Answers are keyed by `name`, so the name is part of the data. */
 function FieldRow({ field, index, count, onChange, onMove, onRemove }) {
   const [nameTouched, setNameTouched] = useState(Boolean(field.name))
+  // The textarea keeps its own text. Deriving it from the parsed options
+  // would drop the newline the moment Enter is pressed — a blank trailing
+  // line is not an option — and the next one would run into the last.
+  const [optionsText, setOptionsText] = useState(() => (field.options ?? []).join('\n'))
   const id = `field-${field.id}`
 
   // The name follows the label until someone edits it, then it is theirs —
@@ -90,7 +112,19 @@ function FieldRow({ field, index, count, onChange, onMove, onRemove }) {
             id={`${id}-type`}
             className="field"
             value={field.type}
-            onChange={(event) => onChange({ ...field, type: event.target.value })}
+            onChange={(event) => {
+              const type = event.target.value
+              onChange(
+                type === 'scale'
+                  ? {
+                      ...field,
+                      type,
+                      scaleMin: field.scaleMin ?? SCALE_LIMITS.defaultMin,
+                      scaleMax: field.scaleMax ?? SCALE_LIMITS.defaultMax,
+                    }
+                  : { ...field, type },
+              )
+            }}
           >
             {FIELD_TYPES.map((type) => (
               <option key={type} value={type}>{TYPE_LABELS[type] ?? type}</option>
@@ -125,20 +159,86 @@ function FieldRow({ field, index, count, onChange, onMove, onRemove }) {
         </div>
       </div>
 
-      {field.type === 'select' && (
+      <div className="form-field">
+        <label htmlFor={`${id}-help`}>
+          Description <span className="micro field-optional">optional</span>
+        </label>
+        <input
+          id={`${id}-help`}
+          className="field"
+          value={field.help ?? ''}
+          onChange={(event) => onChange({ ...field, help: event.target.value })}
+        />
+      </div>
+
+      {field.type === 'scale' && (
+        <div className="field-row-grid">
+          <div className="form-field">
+            <label htmlFor={`${id}-min`}>From</label>
+            <select
+              id={`${id}-min`}
+              className="field"
+              value={field.scaleMin ?? SCALE_LIMITS.defaultMin}
+              onChange={(event) => onChange({ ...field, scaleMin: Number(event.target.value) })}
+            >
+              {SCALE_LIMITS.min.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor={`${id}-max`}>To</label>
+            <select
+              id={`${id}-max`}
+              className="field"
+              value={field.scaleMax ?? SCALE_LIMITS.defaultMax}
+              onChange={(event) => onChange({ ...field, scaleMax: Number(event.target.value) })}
+            >
+              {MAX_POINTS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor={`${id}-min-label`}>
+              Low label <span className="micro field-optional">optional</span>
+            </label>
+            <input
+              id={`${id}-min-label`}
+              className="field"
+              value={field.minLabel ?? ''}
+              onChange={(event) => onChange({ ...field, minLabel: event.target.value })}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor={`${id}-max-label`}>
+              High label <span className="micro field-optional">optional</span>
+            </label>
+            <input
+              id={`${id}-max-label`}
+              className="field"
+              value={field.maxLabel ?? ''}
+              onChange={(event) => onChange({ ...field, maxLabel: event.target.value })}
+            />
+          </div>
+        </div>
+      )}
+
+      {CHOICE_TYPES.includes(field.type) && (
         <div className="form-field">
           <label htmlFor={`${id}-options`}>Options</label>
           <textarea
             id={`${id}-options`}
             className="field"
             rows={3}
-            value={field.options?.join('\n') ?? ''}
-            onChange={(event) =>
+            value={optionsText}
+            onChange={(event) => {
+              setOptionsText(event.target.value)
               onChange({
                 ...field,
                 options: event.target.value.split('\n').map((line) => line.trim()).filter(Boolean),
               })
-            }
+            }}
           />
           <p className="micro field-hint">One per line.</p>
         </div>
@@ -158,6 +258,16 @@ function Editor({ initial, isNew }) {
 
   const create = useAction((client, input) => client.forms.create(input))
   const update = useAction((client, formId, patch) => client.forms.update(formId, patch))
+  const remove = useAction((client, formId) => client.forms.remove(formId))
+  const canReadResponses = useCan(PERMISSIONS.SUBMISSIONS_READ)
+  // Deleting a form deletes every answer to it (the foreign key cascades), so
+  // the button arms first, like removing a member.
+  const [confirming, setConfirming] = useState(false)
+
+  async function handleDelete() {
+    setConfirming(false)
+    if ((await remove.run(id)).ok) navigate('/forms', { replace: true })
+  }
 
   const set = (key, value) => {
     setSaved(false)
@@ -220,9 +330,28 @@ function Editor({ initial, isNew }) {
         {!isNew && (
           <Link className="btn btn-quiet" to={`/forms/${id}/fill`}>Fill in</Link>
         )}
+        {!isNew && canReadResponses && (
+          <Link className="btn btn-quiet" to={`/forms/${id}/submissions`}>Responses</Link>
+        )}
+        {!isNew &&
+          (confirming ? (
+            <>
+              <button type="button" className="btn btn-danger" onClick={handleDelete}>
+                Delete form and its responses
+              </button>
+              <button type="button" className="btn btn-quiet" onClick={() => setConfirming(false)}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn btn-danger" onClick={() => setConfirming(true)}>
+              Delete
+            </button>
+          ))}
       </PageTitle>
 
       {error && <p className="state state-error" role="alert">{error.message}</p>}
+      {remove.error && <p className="state state-error" role="alert">{remove.error.message}</p>}
       {saved && <p className="state state-ok" role="status">Saved.</p>}
 
       <form className="editor" onSubmit={handleSubmit} noValidate>

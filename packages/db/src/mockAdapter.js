@@ -1,6 +1,8 @@
 import { createSeed } from './seed.js'
-import { can, PERMISSIONS } from './permissions.js'
+import { can, PERMISSIONS, PRESIDENT_ROLE_ID } from './permissions.js'
 import { checkForm, missingAnswers } from './formRules.js'
+import { checkRole, compareRoles } from './roleRules.js'
+import { checkEvent, normaliseEvent, compareEvents } from './eventRules.js'
 import { DataError, CODES } from './errors.js'
 
 const STORAGE_KEY = 'mads.mock.db'
@@ -39,7 +41,11 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
       const raw = storage.getItem(STORAGE_KEY)
       if (raw) {
         try {
-          return JSON.parse(raw)
+          const stored = JSON.parse(raw)
+          // A browser that ran the panel before a table existed has a stored
+          // copy without it. Reseed rather than crash on the missing key.
+          const fresh = seed ? clone(seed) : createSeed()
+          if (Object.keys(fresh).every((key) => key in stored)) return stored
         } catch {
           // Corrupt or stale shape — fall through and reseed.
         }
@@ -486,6 +492,7 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
           )
         }
         find('roles', input.roleId)
+        refusePresidentRole(input.roleId)
         if (db.members.some((m) => m.email.toLowerCase() === email)) {
           throw new DataError(CODES.CONFLICT, `${email} already has an account.`)
         }
@@ -495,6 +502,7 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
           email,
           fullName,
           roleId: input.roleId,
+          isSuper: false,
           createdAt: now(),
         }
         db.members.push(member)
@@ -506,8 +514,22 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         const actor = requirePermission(PERMISSIONS.MEMBERS_WRITE)
         const member = find('members', id)
 
+        // Only the name is editable here. Email is the sign-in identity and
+        // isSuper is set once, by migration, for the association account.
+        patch = Object.fromEntries(
+          Object.entries(patch).filter(([key]) => ['fullName', 'roleId'].includes(key)),
+        )
+        if (patch.fullName !== undefined) {
+          patch.fullName = String(patch.fullName).trim()
+          if (!patch.fullName) throw new DataError(CODES.INVALID, 'A member needs a name.')
+        }
+
         if (patch.roleId && patch.roleId !== member.roleId) {
           find('roles', patch.roleId)
+          if (member.isSuper) {
+            throw new DataError(CODES.FORBIDDEN, 'The President’s role is fixed.')
+          }
+          refusePresidentRole(patch.roleId)
           // Demoting yourself locks you out of this page, and there may be no
           // other president left to undo it.
           if (member.id === actor.id) {
@@ -538,6 +560,9 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         if (member.id === actor.id) {
           throw new DataError(CODES.FORBIDDEN, 'You cannot remove your own account.')
         }
+        if (member.isSuper) {
+          throw new DataError(CODES.FORBIDDEN, 'The President’s account cannot be removed.')
+        }
         requireRemainingAdmin(db.members.filter((m) => m.id !== id))
 
         db.members = db.members.filter((m) => m.id !== id)
@@ -550,17 +575,51 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         db.submissions.forEach((s) => {
           if (s.submittedBy === id) s.submittedBy = null
         })
+        db.events.forEach((e) => {
+          if (e.createdBy === id) e.createdBy = null
+        })
         return member
       }),
   }
 
   const roles = {
-    list: () => read(() => db.roles),
+    list: () => read(() => [...db.roles].sort(compareRoles)),
+
+    /**
+     * Add a role. Its id is minted here, like any other row; nothing keys on
+     * a role's id except role-president, which already exists.
+     */
+    create: (input) =>
+      write(() => {
+        requirePermission(PERMISSIONS.MEMBERS_WRITE)
+        const role = {
+          name: String(input.name ?? '').trim(),
+          description: String(input.description ?? '').trim(),
+          permissions: [...new Set(input.permissions ?? [])],
+        }
+        checkRole(role)
+        refuseDuplicateRoleName(role.name)
+        const row = { id: `role-${newId()}`, ...role }
+        db.roles.push(row)
+        return row
+      }),
 
     update: (id, patch) =>
       write(() => {
         requirePermission(PERMISSIONS.MEMBERS_WRITE)
         const role = find('roles', id)
+        // The President is the one constant: what it grants is not editable,
+        // because nothing could restore it if it were edited away.
+        if (id === PRESIDENT_ROLE_ID) {
+          throw new DataError(CODES.FORBIDDEN, 'The President role is fixed.')
+        }
+        patch = Object.fromEntries(
+          Object.entries(patch).filter(([key]) => ['name', 'description', 'permissions'].includes(key)),
+        )
+        if (patch.name !== undefined) patch.name = String(patch.name).trim()
+        if (patch.permissions) patch.permissions = [...new Set(patch.permissions)]
+        checkRole(patch)
+        if (patch.name !== undefined) refuseDuplicateRoleName(patch.name, id)
         // Same floor as demoting a person: stripping members:write from the
         // last role that carries it locks everyone out of this page.
         if (patch.permissions) {
@@ -572,6 +631,111 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
         Object.assign(role, patch)
         return role
       }),
+
+    /**
+     * Delete a role nobody holds. Refusing rather than reassigning is the
+     * same call as a course with syllabi: the person deleting has to decide
+     * where each member goes, and the page tells them who is still in it.
+     */
+    remove: (id) =>
+      write(() => {
+        requirePermission(PERMISSIONS.MEMBERS_WRITE)
+        const role = find('roles', id)
+        if (id === PRESIDENT_ROLE_ID) {
+          throw new DataError(CODES.FORBIDDEN, 'The President role is fixed.')
+        }
+        const holders = db.members.filter((m) => m.roleId === id).length
+        if (holders) {
+          throw new DataError(
+            CODES.CONFLICT,
+            `${holders} member${holders === 1 ? ' still holds' : 's still hold'} this role. Move ${holders === 1 ? 'them' : 'everyone'} to another role first.`,
+          )
+        }
+        db.roles = db.roles.filter((r) => r.id !== id)
+        return role
+      }),
+  }
+
+  const events = {
+    /**
+     * Public events for everyone; private ones only for a signed-in member —
+     * the same split events_read draws in 0008. `from`/`to` are inclusive
+     * YYYY-MM-DD bounds on the event's first day.
+     */
+    list: ({ from, to } = {}) =>
+      read(() =>
+        db.events
+          .filter((e) => e.isPublic || currentUser())
+          .filter((e) => (from ? (e.endDate ?? e.date) >= from : true))
+          .filter((e) => (to ? e.date <= to : true))
+          .sort(compareEvents),
+      ),
+
+    byId: (id) =>
+      read(() => {
+        const event = find('events', id)
+        if (!event.isPublic && !currentUser()) {
+          throw new DataError(CODES.NOT_FOUND, `No events row with id ${id}.`)
+        }
+        return event
+      }),
+
+    create: (input) =>
+      write(() => {
+        const user = requirePermission(PERMISSIONS.EVENTS_WRITE)
+        const clean = normaliseEvent(input)
+        checkEvent({ title: clean.title ?? '', date: clean.date ?? '', ...clean })
+        const event = {
+          id: newId(),
+          title: clean.title,
+          description: clean.description ?? '',
+          location: clean.location ?? '',
+          date: clean.date,
+          endDate: clean.endDate ?? null,
+          startTime: clean.startTime ?? null,
+          endTime: clean.endTime ?? null,
+          isPublic: clean.isPublic ?? true,
+          createdBy: user.id,
+          createdAt: now(),
+          updatedAt: now(),
+        }
+        db.events.push(event)
+        return event
+      }),
+
+    update: (id, patch) =>
+      write(() => {
+        requirePermission(PERMISSIONS.EVENTS_WRITE)
+        const event = find('events', id)
+        const clean = normaliseEvent(patch)
+        checkEvent(clean, event)
+        Object.assign(event, clean, { updatedAt: now() })
+        return event
+      }),
+
+    remove: (id) =>
+      write(() => {
+        requirePermission(PERMISSIONS.EVENTS_WRITE)
+        const event = find('events', id)
+        db.events = db.events.filter((e) => e.id !== id)
+        return event
+      }),
+  }
+
+  /** Nobody but the President's own account holds role-president. */
+  function refusePresidentRole(roleId) {
+    if (roleId === PRESIDENT_ROLE_ID) {
+      throw new DataError(
+        CODES.FORBIDDEN,
+        'The President role belongs to the association account alone. Pick another role.',
+      )
+    }
+  }
+
+  function refuseDuplicateRoleName(name, exceptId = null) {
+    if (db.roles.some((r) => r.id !== exceptId && r.name.toLowerCase() === name.toLowerCase())) {
+      throw new DataError(CODES.CONFLICT, `There is already a role called “${name}”.`)
+    }
   }
 
   return {
@@ -585,6 +749,7 @@ export function createMockAdapter({ latency = 0, storage = null, seed } = {}) {
     submissions,
     members,
     roles,
+    events,
     /** Test and dev-tooling escape hatch. Not part of the adapter interface. */
     __reset() {
       db = seed ? clone(seed) : createSeed()

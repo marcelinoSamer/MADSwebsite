@@ -72,6 +72,10 @@ await refuses('cannot read an internal form', () => anon.forms.bySlug('venue-res
 await refuses('cannot list internal forms', () => anon.forms.list({ audience: 'internal' }))
 await refuses('cannot read the member roster', () => anon.members.list())
 await refuses('cannot create a post', () => anon.posts.create({ slug, title: 'Nope' }))
+await check('reads the public calendar', () => anon.events.list())
+await refuses('cannot add a calendar event', () =>
+  anon.events.create({ title: 'Nope', date: '2030-01-01' }),
+)
 
 await refuses('cannot create an account', () =>
   anon.members.create({
@@ -90,9 +94,10 @@ await check('signs in', async () => {
     password: env.MADS_PASSWORD,
   })
   if (!session?.role) throw new Error('signed in but no role resolved')
-  if (session.role.permissions.length !== 8) {
-    throw new Error(`expected 8 permissions, got ${session.role.permissions.length}`)
+  if (session.role.permissions.length !== 9) {
+    throw new Error(`expected 9 permissions, got ${session.role.permissions.length}`)
   }
+  if (!session.user.isSuper) throw new Error('the President account is not marked is_super')
   adminId = session.user.id
 })
 
@@ -154,7 +159,61 @@ await refuses('an anonymous visitor cannot answer it', async () => {
 
 await check('reads the member roster', async () => {
   const members = await admin.members.list()
-  if (members.length < 2) throw new Error(`expected 2 accounts, got ${members.length}`)
+  if (members.length < 1) throw new Error('the roster is empty')
+})
+
+// The calendar (0008): events:write writes, and a members-only event stays
+// off the public site.
+let eventId = null
+await check('adds a members-only calendar event', async () => {
+  const event = await admin.events.create({
+    title: `Verification event ${stamp}`,
+    date: '2030-01-01',
+    startTime: '10:00',
+    isPublic: false,
+  })
+  eventId = event.id
+  if (event.startTime !== '10:00') throw new Error(`start time came back as ${event.startTime}`)
+})
+await refuses('a members-only event is hidden from anonymous readers', async () =>
+  (await anon.events.list({ from: '2030-01-01', to: '2030-01-01' })).filter((e) => e.id === eventId),
+)
+await check('edits that event', async () => {
+  const event = await admin.events.update(eventId, { endTime: '11:30' })
+  if (event.endTime !== '11:30') throw new Error(`end time came back as ${event.endTime}`)
+})
+await refuses('an event cannot end before it starts (check constraint)', async () => {
+  const { error } = await admin.client.from('events').update({ end_time: '09:00' }).eq('id', eventId)
+  if (error) throw error
+})
+
+// Roles as data, and the President as the fixed point (0007).
+let probeRoleId = null
+await check('creates a role', async () => {
+  const role = await admin.roles.create({
+    name: `Verification ${stamp}`,
+    permissions: ['events:write'],
+  })
+  probeRoleId = role.id
+  if (!probeRoleId?.startsWith('role-')) throw new Error(`id came back as ${probeRoleId}`)
+})
+await refuses('cannot give a role member management (roles_president_guard)', async () => {
+  const { error } = await admin.client
+    .from('roles')
+    .update({ permissions: ['members:write'] })
+    .eq('id', probeRoleId)
+  if (error) throw error
+})
+await refuses('cannot edit the President role', async () => {
+  const { error } = await admin.client
+    .from('roles')
+    .update({ permissions: ['posts:read'] })
+    .eq('id', 'role-president')
+  if (error) throw error
+})
+await refuses('cannot delete the President role', async () => {
+  const { error } = await admin.client.from('roles').delete().eq('id', 'role-president')
+  if (error) throw error
 })
 
 // Account management — the admin-users Edge Function, plus the two triggers
@@ -178,6 +237,15 @@ await check('changes that account’s role', async () => {
   if (member.roleId !== 'role-content') throw new Error(`role came back as ${member.roleId}`)
 })
 
+await refuses('cannot move anyone else into President (profiles_president_guard)', async () => {
+  if (!probeMemberId) throw new Error('nothing was created to promote')
+  const { error } = await admin.client
+    .from('profiles')
+    .update({ role_id: 'role-president' })
+    .eq('id', probeMemberId)
+  if (error) throw error
+})
+
 await refuses('cannot change its own role (profiles_role_guard)', () =>
   admin.members.update(adminId, { roleId: 'role-writer' }),
 )
@@ -190,6 +258,12 @@ await check('deletes the probe account', async () => {
   if (probeMemberId) await admin.members.remove(probeMemberId)
 })
 await check('deletes the verification post', () => admin.posts.remove(postId))
+await check('deletes the verification event', async () => {
+  if (eventId) await admin.events.remove(eventId)
+})
+await check('deletes the verification role', async () => {
+  if (probeRoleId) await admin.roles.remove(probeRoleId)
+})
 
 await check('removes the probe subscriber', async () => {
   const all = await admin.subscribers.list()

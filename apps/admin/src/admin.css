@@ -835,6 +835,298 @@ button {
   margin: 0;
 }
 
+/* --- Roles -------------------------------------------------------------- */
+
+/* A role's permissions, one fieldset per feature, flowing into as many
+   columns as fit — the President reads across a role, not down a list. */
+.permission-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.permission-group {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.permission-group label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.role-editor {
+  border-left: 2px solid var(--purple);
+}
+
+.role-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.role-fixed {
+  color: var(--text);
+}
+
+.section-heading {
+  font-size: 0.68rem;
+  font-family: var(--body);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 0.9rem;
+}
+
+/* A text-weight action inside a table cell, beside the value it edits. */
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-left: 0.6rem;
+  color: var(--blue-accent);
+  letter-spacing: 0.1em;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.inline-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.state-inline-error {
+  flex-basis: 100%;
+  color: var(--danger);
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+/* --- Calendar ----------------------------------------------------------- */
+
+.form-field-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 620px) {
+  .form-field-wide {
+    grid-column: auto;
+  }
+}
+
+.event-hint {
+  margin: -0.6rem 0 1.1rem;
+}
+
+.event-section {
+  margin-bottom: 1.75rem;
+}
+
+.event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--navy);
+}
+
+.event-item {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) 1fr auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+}
+
+.event-item + .event-item {
+  border-top: 1px solid var(--rule);
+}
+
+.event-item-editing {
+  display: block;
+  background: var(--navy-lift);
+}
+
+.event-when {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.event-what h3 {
+  font-size: 0.98rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.event-what p {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 760px) {
+  .event-item {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .event-item .cell-actions {
+    justify-content: start;
+  }
+}
+
+/* --- Responses ---------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--rule-strong);
+  margin-bottom: 1.25rem;
+}
+
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 0.6rem 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--purple);
+}
+
+.summary-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary-item h3 {
+  font-size: 0.98rem;
+  margin-bottom: 0.2rem;
+}
+
+.summary-item .micro {
+  color: var(--text-faint);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: minmax(6rem, 14rem) 1fr 4.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.bar-track {
+  height: 0.6rem;
+  background: var(--navy-deepest);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--blue-accent);
+}
+
+.bar-count {
+  text-align: right;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.answer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.answer-list li {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  padding: 0.45rem 0.7rem;
+  background: var(--navy-deepest);
+  border-radius: 3px;
+}
+
+/* Multiple-choice answers when filling a form in: options stacked, each
+   beside its own control, under the question's legend. */
+.choice-group {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.choice-group legend {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  padding: 0;
+}
+
+.choice-group label {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.choice-options {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.scale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scale-end {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.question-help {
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  margin-top: -0.2rem;
+}
+
 /* --- 9. Login ----------------------------------------------------------- */
 
 .login {

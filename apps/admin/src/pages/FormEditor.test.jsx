@@ -102,4 +102,52 @@ describe('FormEditor', () => {
 
     expect(await screen.findByRole('heading', { name: /not your area/i })).toBeInTheDocument()
   })
+
+  it('builds Google Forms style questions: multiple choice, checkboxes, a scale', async () => {
+    const user = userEvent.setup()
+    const { client } = await renderAs(ROLE.president, <App />, { route: '/forms/new' })
+
+    await user.type(await screen.findByLabelText(/^title$/i), 'Workshop poll')
+
+    await user.click(screen.getByRole('button', { name: /add question/i }))
+    let [row] = questions()
+    await user.type(within(row).getByLabelText(/^question$/i), 'Which day?')
+    await user.selectOptions(within(row).getByLabelText(/answer type/i), 'radio')
+    await user.type(within(row).getByLabelText(/^options$/i), 'Monday{enter}Thursday')
+
+    await user.click(screen.getByRole('button', { name: /add question/i }))
+    row = questions()[1]
+    await user.type(within(row).getByLabelText(/^question$/i), 'Topics')
+    await user.selectOptions(within(row).getByLabelText(/answer type/i), 'checkbox')
+    await user.type(within(row).getByLabelText(/^options$/i), 'R{enter}Python')
+
+    await user.click(screen.getByRole('button', { name: /add question/i }))
+    row = questions()[2]
+    await user.type(within(row).getByLabelText(/^question$/i), 'How useful?')
+    await user.selectOptions(within(row).getByLabelText(/answer type/i), 'scale')
+    await user.selectOptions(within(row).getByLabelText(/^to$/i), '10')
+    await user.type(within(row).getByLabelText(/high label/i), 'Very')
+
+    await user.click(screen.getByRole('button', { name: /create form/i }))
+    await screen.findByRole('status')
+
+    const form = await client.forms.bySlug('workshop-poll')
+    expect(form.fields).toEqual([
+      expect.objectContaining({ type: 'radio', options: ['Monday', 'Thursday'] }),
+      expect.objectContaining({ type: 'checkbox', options: ['R', 'Python'] }),
+      expect.objectContaining({ type: 'scale', scaleMin: 1, scaleMax: 10, maxLabel: 'Very' }),
+    ])
+  })
+
+  it('deletes a form and its responses after the button is armed', async () => {
+    const user = userEvent.setup()
+    const { client } = await renderAs(ROLE.president, <App />, { route: '/forms/form-1/edit' })
+
+    await user.click(await screen.findByRole('button', { name: /^delete$/i }))
+    await user.click(screen.getByRole('button', { name: /delete form and its responses/i }))
+
+    expect(await screen.findByRole('heading', { name: /^forms$/i })).toBeInTheDocument()
+    expect((await client.forms.list()).some((f) => f.id === 'form-1')).toBe(false)
+    expect(await client.submissions.list('form-1')).toEqual([])
+  })
 })

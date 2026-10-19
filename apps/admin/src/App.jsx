@@ -12,6 +12,8 @@ import FormEditor from './pages/FormEditor'
 import FormFill from './pages/FormFill'
 import Submissions from './pages/Submissions'
 import Members from './pages/Members'
+import Roles from './pages/Roles'
+import Calendar from './pages/Calendar'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -34,7 +36,9 @@ function App() {
           <Route path="forms/:id/edit" element={<FormEditor />} />
           <Route path="forms/:id/fill" element={<FormFill />} />
           <Route path="forms/:id/submissions" element={<Submissions />} />
+          <Route path="calendar" element={<Calendar />} />
           <Route path="members" element={<Members />} />
+          <Route path="roles" element={<Roles />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Route>

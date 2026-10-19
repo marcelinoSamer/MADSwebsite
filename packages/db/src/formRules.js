@@ -24,8 +24,32 @@ export const AUDIENCE_LABELS = {
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-/** The field types the renderers know how to draw. */
-export const FIELD_TYPES = ['text', 'textarea', 'email', 'number', 'date', 'select']
+/**
+ * The field types the renderers know how to draw, in the order the editor
+ * offers them. `checkbox` is the one multi-answer type: its answer is stored
+ * as an array of the chosen options, every other type stores one string.
+ */
+export const FIELD_TYPES = [
+  'text',
+  'textarea',
+  'radio',
+  'checkbox',
+  'select',
+  'scale',
+  'email',
+  'number',
+  'date',
+  'time',
+]
+
+/** Types whose answer is picked from `options`. */
+export const CHOICE_TYPES = ['radio', 'checkbox', 'select']
+
+/**
+ * A linear scale runs from `scaleMin` to `scaleMax`, Google Forms' own
+ * bounds: it starts at 0 or 1 and ends somewhere from 2 to 10.
+ */
+export const SCALE_LIMITS = { min: [0, 1], max: [2, 10], defaultMin: 1, defaultMax: 5 }
 
 /** Validates a create input or an update patch. Ignores keys not present. */
 export function checkForm(patch) {
@@ -59,8 +83,27 @@ export function checkFields(fields) {
     if (names.has(name)) {
       throw new DataError(CODES.CONFLICT, `Two questions share the name “${name}”.`)
     }
-    if (field.type === 'select' && !(field.options ?? []).length) {
-      throw new DataError(CODES.INVALID, `The question “${name}” is a choice with no options.`)
+    if (field.type !== undefined && !FIELD_TYPES.includes(field.type)) {
+      throw new DataError(CODES.INVALID, `The question “${name}” has an unknown type.`)
+    }
+    if (CHOICE_TYPES.includes(field.type)) {
+      const options = field.options ?? []
+      if (!options.length) {
+        throw new DataError(CODES.INVALID, `The question “${name}” is a choice with no options.`)
+      }
+      if (new Set(options).size !== options.length) {
+        throw new DataError(CODES.INVALID, `The question “${name}” lists the same option twice.`)
+      }
+    }
+    if (field.type === 'scale') {
+      const min = Number(field.scaleMin ?? SCALE_LIMITS.defaultMin)
+      const max = Number(field.scaleMax ?? SCALE_LIMITS.defaultMax)
+      if (!SCALE_LIMITS.min.includes(min) || max < SCALE_LIMITS.max[0] || max > SCALE_LIMITS.max[1]) {
+        throw new DataError(
+          CODES.INVALID,
+          `The scale on “${name}” has to start at 0 or 1 and end between 2 and 10.`,
+        )
+      }
     }
     names.add(name)
   }
@@ -74,6 +117,18 @@ export function checkFields(fields) {
  */
 export function missingAnswers(form, payload) {
   return (form.fields ?? [])
-    .filter((field) => field.required && !String(payload[field.name] ?? '').trim())
+    .filter((field) => field.required && isBlank(payload[field.name]))
     .map((field) => field.label)
+}
+
+/** A checkbox answer is an array; nothing ticked is as blank as an empty string. */
+export function isBlank(answer) {
+  if (Array.isArray(answer)) return answer.length === 0
+  return !String(answer ?? '').trim()
+}
+
+/** An answer as one line of text, for a table cell or a CSV column. */
+export function answerText(answer) {
+  if (Array.isArray(answer)) return answer.join(', ')
+  return String(answer ?? '')
 }

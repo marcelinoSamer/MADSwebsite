@@ -1,4 +1,4 @@
-import { PERMISSIONS, ALL_PERMISSIONS } from './permissions.js'
+import { PERMISSIONS, ALL_PERMISSIONS, GRANTABLE_PERMISSIONS } from './permissions.js'
 
 /**
  * Seed data for the mock adapter.
@@ -14,8 +14,14 @@ export function createSeed() {
     {
       id: 'role-president',
       name: 'President',
-      description: 'Full access. Held by the president and VP.',
+      description: 'Full access, including members and roles. Held only by the association account.',
       permissions: [...ALL_PERMISSIONS],
+    },
+    {
+      id: 'role-vice-president',
+      name: 'Vice President',
+      description: 'Everything except managing members and roles.',
+      permissions: [...GRANTABLE_PERMISSIONS],
     },
     {
       id: 'role-content',
@@ -44,27 +50,42 @@ export function createSeed() {
       description: 'Drafts posts but cannot publish them.',
       permissions: [PERMISSIONS.POSTS_READ, PERMISSIONS.POSTS_WRITE],
     },
+    {
+      id: 'role-events',
+      name: 'Events Head',
+      description: 'Runs the semester calendar and the forms that feed it.',
+      permissions: [
+        PERMISSIONS.POSTS_READ,
+        PERMISSIONS.EVENTS_WRITE,
+        PERMISSIONS.FORMS_WRITE,
+        PERMISSIONS.SUBMISSIONS_READ,
+      ],
+    },
   ]
 
   // The two real accounts, mirroring what scripts/seed-supabase.mjs creates
   // in Supabase Auth. Passwords are NOT here — the mock uses DEV_PASSWORD,
   // the real ones live only in .env and in Supabase.
   //
-  // Both are President. To exercise a narrower role in a test, build a seed
-  // with `withMember()` rather than adding demo people back here.
+  // `isSuper` marks the President: exactly one account, the association's own
+  // address, and the only one that can hold role-president. To exercise any
+  // other role in a test, build a seed with `withMember()` rather than adding
+  // demo people back here.
   const members = [
     {
       id: 'user-mads',
       email: 'mads@aucegypt.edu',
       fullName: 'MADS',
       roleId: 'role-president',
+      isSuper: true,
       createdAt: '2026-09-01T09:00:00.000Z',
     },
     {
       id: 'user-admin',
       email: 'Admin@mads.auc',
       fullName: 'MADS Admin',
-      roleId: 'role-president',
+      roleId: 'role-vice-president',
+      isSuper: false,
       createdAt: '2026-09-01T09:00:00.000Z',
     },
   ]
@@ -274,15 +295,82 @@ export function createSeed() {
     { id: 'sub-d', email: 'old@aucegypt.edu', source: 'site', createdAt: '2026-08-11T10:00:00.000Z', unsubscribedAt: '2026-09-01T10:00:00.000Z' },
   ]
 
-  return { roles, members, posts, courses, syllabi, forms, submissions, subscribers }
+  // The semester calendar. Dates and times are wall-clock Cairo time with no
+  // zone attached — `date` is YYYY-MM-DD, `startTime`/`endTime` are HH:MM or
+  // null, and a null `startTime` is an all-day event. An association calendar
+  // never needs to be read in another zone, and a timestamp would shift a
+  // midnight-to-midnight datathon onto the wrong day for anyone outside it.
+  // `isPublic: false` keeps an entry inside the panel — a board meeting the
+  // site has no business announcing.
+  const events = [
+    {
+      id: 'event-1',
+      title: 'Semester kick-off',
+      description: 'Meet the board and hear what is planned for the term.',
+      location: 'Hatem Hall seminar room',
+      date: '2026-09-28',
+      endDate: null,
+      startTime: '17:00',
+      endTime: '19:00',
+      isPublic: true,
+      createdBy: 'user-mads',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-01T09:00:00.000Z',
+    },
+    {
+      id: 'event-2',
+      title: 'Actuarial exam info session',
+      description: 'What Exams P and FM cover, and how to register.',
+      location: '',
+      date: '2026-10-12',
+      endDate: null,
+      startTime: '16:00',
+      endTime: null,
+      isPublic: true,
+      createdBy: 'user-mads',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-01T09:00:00.000Z',
+    },
+    {
+      id: 'event-3',
+      title: 'Board meeting',
+      description: 'Planning for November.',
+      location: '',
+      date: '2026-10-20',
+      endDate: null,
+      startTime: '18:00',
+      endTime: null,
+      isPublic: false,
+      createdBy: 'user-mads',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-01T09:00:00.000Z',
+    },
+    {
+      id: 'event-4',
+      title: 'Datathon',
+      description: 'Forty-eight hours, one dataset, teams of up to four.',
+      location: '',
+      date: '2026-11-07',
+      endDate: '2026-11-08',
+      startTime: null,
+      endTime: null,
+      isPublic: true,
+      createdBy: 'user-mads',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      updatedAt: '2026-09-01T09:00:00.000Z',
+    },
+  ]
+
+  return { roles, members, posts, courses, syllabi, forms, submissions, subscribers, events }
 }
 
 /**
  * A seed with one extra member holding `roleId`.
  *
- * Both real accounts are President, so a test that needs to prove a narrower
- * role is blocked builds its own member rather than relying on a demo person
- * existing in the seed.
+ * A test that needs to prove a narrower role is blocked builds its own member
+ * rather than relying on a demo person existing in the seed. The President
+ * cannot be one of these — role-president belongs to the super account alone
+ * — so a test acting as the President signs in as `mads@aucegypt.edu`.
  */
 export function withMember(roleId, overrides = {}) {
   const seed = createSeed()
@@ -291,6 +379,7 @@ export function withMember(roleId, overrides = {}) {
     email: 'test@mads.auc',
     fullName: 'Test User',
     roleId,
+    isSuper: false,
     createdAt: '2026-09-01T09:00:00.000Z',
     ...overrides,
   })

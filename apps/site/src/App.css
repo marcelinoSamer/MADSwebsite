@@ -724,6 +724,19 @@ h3 {
   max-width: 54ch;
 }
 
+/* Time and room: the line a reader looks for, so it sits first and in the
+   label register the date uses. */
+.event-body .event-where {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--navy) 82%, transparent);
+}
+
+.calendar .state {
+  color: color-mix(in srgb, var(--navy) 78%, transparent);
+}
+
 @media (max-width: 620px) {
   .event-row {
     grid-template-columns: 1fr;
@@ -1617,6 +1630,58 @@ textarea.field {
 .form .btn[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Multiple choice, checkboxes and a linear scale: a fieldset whose legend is
+   the question, each option beside its own control. */
+.choice-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.choice-group legend {
+  font-size: 0.95rem;
+  color: var(--text);
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.choice-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.choice input {
+  accent-color: var(--purple-soft);
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.choice label {
+  color: var(--text-muted);
+}
+
+.scale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.scale-end,
+.question-help {
+  font-size: 0.85rem;
+  color: var(--text-faint);
 }
 
 /* A field no sighted user sees and no keyboard reaches. Off-screen rather
