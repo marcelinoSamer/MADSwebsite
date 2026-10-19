@@ -35,7 +35,7 @@ npx vitest run -t "renders a link"
 npm i some-package -w @mads/site                  # add a dep to one app
 ```
 
-CI (`.github/workflows/ci.yml`) runs `npm ci && npm test && npm run build` on every PR and on pushes to `main`; a green run on `main` then deploys both apps to Vercel. Lint is not enforced.
+CI (`.github/workflows/ci.yml`) runs `npm ci && npm test && npm run build` on every PR and on pushes to `main`. It does not deploy — Vercel does. Lint is not enforced.
 
 ## The backend decision
 
@@ -43,7 +43,7 @@ The backend is a **managed Supabase project** — Postgres, Auth, Storage, RLS �
 
 The project is **live**: `mads` in `eu-central-1`, deployed to two Vercel projects (`mads-site`, `mads-admin`). Schema and policies are in `supabase/migrations/`, applied through the Management API (see README) — there is no Supabase CLI here.
 
-Vercel's own Git integration is **not** connected: linking a repo needs an interactive GitHub OAuth connection on the Vercel account, which an API token cannot create. Deployment runs from `.github/workflows/ci.yml` instead, gated on the test job. If someone later connects the repo in the Vercel dashboard, delete the `deploy` job — otherwise every push deploys twice.
+Vercel's own Git integration is connected to both projects: every PR gets preview deploys and a push to `main` deploys production. CI used to deploy too, from a `deploy` job gated on the test job; it was deleted once the integration was connected, since every push was deploying twice. Production is therefore **not** gated on CI — a red `main` can still ship, so don't merge a PR whose `Test and build` check has failed.
 
 **Authorization is RLS, not client code.** `has_permission(perm)` is a `security definer` helper that joins `profiles → roles`; every policy calls it with the same strings as `permissions.js`. Things worth knowing before editing policies:
 
