@@ -1,47 +1,23 @@
+import { useQuery } from '@mads/db/react'
+import { todayIso } from '@mads/db'
 import Reveal from './Reveal'
+import AsyncState from './AsyncState'
+import { eventDateLabel, eventWhere, semesterOf } from '../lib/format'
 
 /**
- * The semester calendar.
+ * The semester calendar — what is coming up, from today.
  *
- * PLACEHOLDER CONTENT — replace `SEMESTER` and every entry in `EVENTS` with
- * the real schedule. This list is hand-edited on purpose: there is no events
- * table in `packages/db` yet, so nothing in the admin panel writes here. If
- * the board ends up editing it more than a couple of times a semester, that
- * is the signal to give events a table and an admin page like posts have.
+ * Read from the `events` table, which the admin panel's Calendar page writes
+ * (anyone whose role carries events:write). Members-only events never reach
+ * this list: events_read hides them from anonymous readers in the database.
  *
- * Keep entries in date order — nothing sorts them. `date` is what a reader
- * sees; `dateTime` is the machine-readable ISO form on the <time> element.
+ * Past events drop off on their own. A multi-day event stays until its last
+ * day is over, which is why the bound is on the end date.
  */
-const SEMESTER = 'Fall 2026'
-
-const EVENTS = [
-  {
-    date: 'Sep 28',
-    dateTime: '2026-09-28',
-    title: 'Semester kick-off',
-    detail: 'Placeholder — replace with the real event and its details.',
-  },
-  {
-    date: 'Oct 12',
-    dateTime: '2026-10-12',
-    title: 'Actuarial exam info session',
-    detail: 'Placeholder — replace with the real event and its details.',
-  },
-  {
-    date: 'Nov 7',
-    dateTime: '2026-11-07',
-    title: 'Datathon',
-    detail: 'Placeholder — replace with the real event and its details.',
-  },
-  {
-    date: 'Nov 23',
-    dateTime: '2026-11-23',
-    title: 'Industry night',
-    detail: 'Placeholder — replace with the real event and its details.',
-  },
-]
-
 function Calendar() {
+  const today = todayIso()
+  const { data: events, loading, error } = useQuery((c) => c.events.list({ from: today }), [today])
+
   return (
     <section className="section calendar" id="calendar">
       <div className="container">
@@ -51,23 +27,36 @@ function Calendar() {
         </Reveal>
 
         <div className="calendar-head">
-          <Reveal as="h2">{SEMESTER}</Reveal>
+          <Reveal as="h2">{semesterOf(today)}</Reveal>
           <Reveal className="calendar-note micro" delay={0.1}>
-            Times and rooms are announced on the blog
+            Details are announced on the blog
           </Reveal>
         </div>
 
-        <ol className="calendar-list">
-          {EVENTS.map(({ date, dateTime, title, detail }, i) => (
-            <Reveal as="li" key={dateTime} className="event-row" delay={i * 0.08} y={20}>
-              <time className="event-date" dateTime={dateTime}>{date}</time>
-              <div className="event-body">
-                <h3>{title}</h3>
-                <p>{detail}</p>
-              </div>
-            </Reveal>
-          ))}
-        </ol>
+        <AsyncState
+          loading={loading}
+          error={error}
+          isEmpty={events?.length === 0}
+          empty="Nothing is scheduled yet. Check back soon."
+        >
+          <ol className="calendar-list">
+            {events?.map((event, i) => {
+              const where = eventWhere(event)
+              return (
+                <Reveal as="li" key={event.id} className="event-row" delay={i * 0.08} y={20}>
+                  <time className="event-date" dateTime={event.date}>
+                    {eventDateLabel(event)}
+                  </time>
+                  <div className="event-body">
+                    <h3>{event.title}</h3>
+                    {where && <p className="event-where">{where}</p>}
+                    {event.description && <p>{event.description}</p>}
+                  </div>
+                </Reveal>
+              )
+            })}
+          </ol>
+        </AsyncState>
       </div>
     </section>
   )

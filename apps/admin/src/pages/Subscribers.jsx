@@ -4,6 +4,7 @@ import PageTitle from '../components/PageTitle'
 import AsyncState from '../components/AsyncState'
 import Gate from '../components/Gate'
 import { formatDate } from '../lib/format'
+import { downloadCsv } from '../lib/csv'
 
 /**
  * Until there is a provider that can send mail, exporting is how a newsletter
@@ -11,18 +12,10 @@ import { formatDate } from '../lib/format'
  * uses. Built here rather than left as a manual database query.
  */
 function exportCsv(subscribers) {
-  const rows = [
+  downloadCsv(`mads-subscribers-${new Date().toISOString().slice(0, 10)}.csv`, [
     ['email', 'source', 'subscribed', 'unsubscribed'],
     ...subscribers.map((s) => [s.email, s.source, s.createdAt, s.unsubscribedAt ?? '']),
-  ]
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `mads-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  ])
 }
 
 function List() {

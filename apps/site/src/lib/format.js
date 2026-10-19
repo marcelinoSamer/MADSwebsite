@@ -21,3 +21,31 @@ export function readingTime(markdown) {
   if (!words) return ''
   return `${Math.max(1, Math.round(words / 200))} min read`
 }
+
+// Calendar dates carry no zone (see packages/db/src/eventRules.js), so they
+// are printed as UTC to stop a browser in another zone moving them a day.
+const SHORT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+const DAY_ONLY = new Intl.DateTimeFormat('en-US', { day: 'numeric', timeZone: 'UTC' })
+const asDate = (iso) => new Date(`${iso}T00:00:00Z`)
+
+/** "Sep 28", "Nov 7–8", "Nov 30 – Dec 1" — short enough for the date column. */
+export function eventDateLabel({ date, endDate }) {
+  if (!endDate || endDate === date) return SHORT.format(asDate(date))
+  if (endDate.slice(0, 7) === date.slice(0, 7)) {
+    return `${SHORT.format(asDate(date))}–${DAY_ONLY.format(asDate(endDate))}`
+  }
+  return `${SHORT.format(asDate(date))} – ${SHORT.format(asDate(endDate))}`
+}
+
+/** "17:00–19:00 · Hatem Hall seminar room", or "" for an all-day event with no venue. */
+export function eventWhere({ startTime, endTime, location }) {
+  const time = startTime ? (endTime ? `${startTime}–${endTime}` : startTime) : ''
+  return [time, location].filter(Boolean).join(' · ')
+}
+
+/** "Fall 2026" from a YYYY-MM-DD: Spring to May, Summer to August, Fall after. */
+export function semesterOf(iso) {
+  const month = Number(iso.slice(5, 7))
+  const term = month <= 5 ? 'Spring' : month <= 8 ? 'Summer' : 'Fall'
+  return `${term} ${iso.slice(0, 4)}`
+}

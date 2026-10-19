@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { useQuery, useAction, useSession } from '@mads/db/react'
-import { PERMISSIONS, PERMISSION_LABELS, MIN_PASSWORD_LENGTH } from '@mads/db'
+import { PERMISSIONS, PRESIDENT_ROLE_ID, MIN_PASSWORD_LENGTH } from '@mads/db'
 import PageTitle from '../components/PageTitle'
 import AsyncState from '../components/AsyncState'
 import Gate from '../components/Gate'
@@ -128,6 +129,59 @@ function AddMember({ roles, onAdded }) {
   )
 }
 
+/** A member's name, with a rename that edits it in place. */
+function MemberName({ member, onRenamed }) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(member.fullName)
+  const rename = useAction((client, fullName) => client.members.update(member.id, { fullName }))
+  const shown = member.fullName
+
+  async function handleSave(event) {
+    event.preventDefault()
+    if (!(await rename.run(name)).ok) return
+    setEditing(false)
+    onRenamed()
+  }
+
+  if (!editing) {
+    return (
+      <>
+        {shown}
+        <button
+          type="button"
+          className="btn-link micro"
+          onClick={() => {
+            setName(shown)
+            setEditing(true)
+          }}
+          aria-label={`Rename ${shown}`}
+        >
+          Rename
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <form className="inline-edit" onSubmit={handleSave} noValidate>
+      <input
+        className="field field-inline"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        aria-label={`New name for ${shown}`}
+        autoFocus
+      />
+      <button type="submit" className="btn btn-quiet" disabled={rename.pending || !name.trim()}>
+        Save
+      </button>
+      <button type="button" className="btn btn-quiet" onClick={() => setEditing(false)}>
+        Cancel
+      </button>
+      {rename.error && <p className="micro state-inline-error" role="alert">{rename.error.message}</p>}
+    </form>
+  )
+}
+
 function Roster() {
   const { user } = useSession()
   const members = useQuery((c) => c.members.list())
@@ -135,6 +189,9 @@ function Roster() {
 
   const setRole = useAction((client, id, roleId) => client.members.update(id, { roleId }))
   const remove = useAction((client, id) => client.members.remove(id))
+
+  // Nobody is moved into the President role: it belongs to one account.
+  const assignable = roles.data?.filter((role) => role.id !== PRESIDENT_ROLE_ID) ?? []
 
   const [added, setAdded] = useState(null)
   // Deleting an account is irreversible and the row is one click from a role
@@ -165,14 +222,16 @@ function Roster() {
     <>
       <PageTitle
         title="Members"
-        lead="Who can sign in, what each role is allowed to do, and who gets an account."
-      />
+        lead="Who can sign in and which role each person holds. What a role allows is set under Roles."
+      >
+        <Link className="btn btn-quiet" to="/roles">Edit roles</Link>
+      </PageTitle>
 
       <AsyncState
         loading={members.loading || roles.loading}
         error={members.error || roles.error}
       >
-        {roles.data && <AddMember roles={roles.data} onAdded={handleAdded} />}
+        {roles.data && <AddMember roles={assignable} onAdded={handleAdded} />}
 
         {added && (
           <p className="state state-ok" role="status">
@@ -202,9 +261,17 @@ function Roster() {
 
                 return (
                   <tr key={member.id}>
-                    <th scope="row">{member.fullName}</th>
+                    <th scope="row">
+                      <MemberName member={member} onRenamed={members.refetch} />
+                    </th>
                     <td className="cell-muted">{member.email}</td>
                     <td>
+                      {member.isSuper ? (
+                        <span className="role-fixed">
+                          {roleName(member.roleId)}
+                          <span className="micro row-sub">Fixed</span>
+                        </span>
+                      ) : (
                       <select
                         className="field field-inline"
                         value={member.roleId}
@@ -214,15 +281,16 @@ function Roster() {
                         // and there may be no other president to undo it.
                         disabled={isSelf}
                       >
-                        {roles.data?.map((role) => (
+                        {assignable.map((role) => (
                           <option key={role.id} value={role.id}>{role.name}</option>
                         ))}
                       </select>
+                      )}
                     </td>
                     <td className="cell-muted cell-nowrap">{formatDate(member.createdAt)}</td>
                     <td className="cell-actions">
-                      {isSelf ? (
-                        <span className="micro cell-muted">This is you</span>
+                      {isSelf || member.isSuper ? (
+                        <span className="micro cell-muted">{isSelf ? 'This is you' : 'President'}</span>
                       ) : confirming === member.id ? (
                         <>
                           <button
@@ -259,28 +327,6 @@ function Roster() {
           </table>
         </div>
 
-        <section className="panel">
-          <h2>What each role can do</h2>
-          <dl className="role-list">
-            {roles.data?.map((role) => (
-              <div key={role.id} className="role-item">
-                <dt>
-                  {role.name}
-                  <span className="micro row-sub">{role.description}</span>
-                </dt>
-                <dd>
-                  <ul className="chip-list">
-                    {role.permissions.map((permission) => (
-                      <li key={permission} className="chip chip-static">
-                        {PERMISSION_LABELS[permission] ?? permission}
-                      </li>
-                    ))}
-                  </ul>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
       </AsyncState>
     </>
   )

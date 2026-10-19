@@ -16,8 +16,42 @@ describe('Members', () => {
     await renderAs(ROLE.president, <App />, { route: '/members' })
 
     expect(await screen.findByRole('combobox', { name: /role for MADS Admin/i })).toHaveValue(
-      'role-president',
+      'role-vice-president',
     )
+  })
+
+  it('shows the President as fixed, with no role picker and no remove', async () => {
+    await renderAs(ROLE.president, <App />, { route: '/members' })
+
+    const row = (await screen.findByText('mads@aucegypt.edu')).closest('tr')
+    expect(within(row).getByText('Fixed')).toBeInTheDocument()
+    expect(within(row).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: /remove/i })).not.toBeInTheDocument()
+  })
+
+  it('never offers the President role to anyone else', async () => {
+    await renderAs(ROLE.president, <App />, { route: '/members' })
+
+    const picker = await screen.findByRole('combobox', { name: /role for MADS Admin/i })
+    expect(within(picker).queryByRole('option', { name: 'President' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText(/^role$/i)).queryByRole('option', { name: 'President' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renames a member', async () => {
+    const user = userEvent.setup()
+    const { client } = await renderAs(ROLE.president, <App />, { route: '/members' })
+
+    await user.click(await screen.findByRole('button', { name: /rename test user/i }))
+    const input = screen.getByRole('textbox', { name: /new name for test user/i })
+    await user.clear(input)
+    await user.type(input, 'Nour Hassan')
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(await screen.findByRole('button', { name: /rename nour hassan/i })).toBeInTheDocument()
+    const members = await client.members.list()
+    expect(members.find((m) => m.id === 'user-test').fullName).toBe('Nour Hassan')
   })
 
   it('reassigns a role', async () => {
@@ -33,11 +67,6 @@ describe('Members', () => {
     expect(members.find((m) => m.fullName === 'MADS Admin').roleId).toBe('role-content')
   })
 
-  it('will not let you change your own role', async () => {
-    await renderAs(ROLE.president, <App />, { route: '/members' })
-
-    expect(await screen.findByRole('combobox', { name: /role for Test User/i })).toBeDisabled()
-  })
 
   it('adds a member and shows the temporary password once', async () => {
     const user = userEvent.setup()
@@ -91,7 +120,8 @@ describe('Members', () => {
     await renderAs(ROLE.president, <App />, { route: '/members' })
 
     await screen.findByRole('combobox', { name: /role for Test User/i })
-    expect(screen.queryByRole('button', { name: /remove Test User/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /remove MADS$/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/this is you/i)).toBeInTheDocument()
   })
 
   it('keeps a narrower role out of the page entirely', async () => {
@@ -101,12 +131,9 @@ describe('Members', () => {
     expect(screen.queryByRole('button', { name: /add member/i })).not.toBeInTheDocument()
   })
 
-  it('spells out what each role can do', async () => {
+  it('links to the role editor', async () => {
     await renderAs(ROLE.president, <App />, { route: '/members' })
 
-    const panel = (await screen.findByRole('heading', { name: /what each role can do/i })).closest(
-      'section',
-    )
-    expect(within(panel).getAllByText(/publish posts to the live site/i).length).toBeGreaterThan(0)
+    expect(await screen.findByRole('link', { name: /edit roles/i })).toHaveAttribute('href', '/roles')
   })
 })

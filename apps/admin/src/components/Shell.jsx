@@ -12,8 +12,10 @@ const NAV = [
   // No permission: everyone signed in fills forms in, whatever else their
   // role allows. The list itself decides which actions each role is offered.
   { to: '/forms', label: 'Forms', need: [] },
+  { to: '/calendar', label: 'Calendar', need: [PERMISSIONS.EVENTS_WRITE] },
   { to: '/subscribers', label: 'Subscribers', need: [PERMISSIONS.SUBSCRIBERS_READ] },
   { to: '/members', label: 'Members', need: [PERMISSIONS.MEMBERS_WRITE] },
+  { to: '/roles', label: 'Roles', need: [PERMISSIONS.MEMBERS_WRITE] },
 ]
 
 function Shell() {

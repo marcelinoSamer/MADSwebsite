@@ -26,18 +26,23 @@ const admin = createClient(VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
+// MADS_EMAIL is the President — the one account migration 0007 pins to
+// role-president. ADMIN_EMAIL is optional, and is a Vice President: nobody
+// else may hold President.
 const ACCOUNTS = [
   {
     email: env.MADS_EMAIL,
     password: env.MADS_PASSWORD,
     fullName: 'MADS',
     roleId: 'role-president',
+    isSuper: true,
   },
   {
     email: env.ADMIN_EMAIL,
     password: env.ADMIN_PASSWORD,
     fullName: 'MADS Admin',
-    roleId: 'role-president',
+    roleId: 'role-vice-president',
+    isSuper: false,
   },
 ].filter((account) => account.email && account.password)
 
@@ -83,15 +88,24 @@ for (const account of ACCOUNTS) {
     console.log(`  created  ${account.email}`)
   }
 
-  const { error: profileError } = await admin.from('profiles').upsert(
-    {
-      id: userId,
-      email: account.email,
-      full_name: account.fullName,
-      role_id: account.roleId,
-    },
-    { onConflict: 'id' },
-  )
+  const profile = {
+    id: userId,
+    email: account.email,
+    full_name: account.fullName,
+    role_id: account.roleId,
+    is_super: account.isSuper,
+  }
+  let { error: profileError } = await admin.from('profiles').upsert(profile, { onConflict: 'id' })
+
+  // Before 0007 there is no is_super column (and no Vice President role) —
+  // which is exactly when 0007 asks for this script to be run, to create the
+  // President's profile it then pins. So fall back to the pre-0007 shape.
+  if (profileError && /is_super/.test(profileError.message)) {
+    const { is_super: _, ...legacy } = profile
+    ;({ error: profileError } = await admin
+      .from('profiles')
+      .upsert({ ...legacy, role_id: 'role-president' }, { onConflict: 'id' }))
+  }
   if (profileError) throw new Error(`Profile for ${account.email}: ${profileError.message}`)
   console.log(`           → profile as ${account.roleId}`)
 }

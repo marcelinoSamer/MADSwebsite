@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { checkForm, missingAnswers } from './formRules.js'
+import { checkRole, compareRoles } from './roleRules.js'
+import { checkEvent, normaliseEvent, compareEvents } from './eventRules.js'
 import { DataError, CODES } from './errors.js'
 
 /**
@@ -98,6 +100,7 @@ const ROW = {
       email: r.email,
       fullName: r.full_name,
       roleId: r.role_id,
+      isSuper: Boolean(r.is_super),
       createdAt: r.created_at,
     }),
     toSnake: (m) => prune({ full_name: m.fullName, role_id: m.roleId }),
@@ -110,6 +113,33 @@ const ROW = {
       permissions: r.permissions ?? [],
     }),
     toSnake: (r) => prune({ name: r.name, description: r.description, permissions: r.permissions }),
+  },
+  event: {
+    toCamel: (r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      location: r.location,
+      date: r.date,
+      endDate: r.end_date,
+      // Postgres `time` comes back as HH:MM:SS; the apps use HH:MM.
+      startTime: r.start_time ? r.start_time.slice(0, 5) : null,
+      endTime: r.end_time ? r.end_time.slice(0, 5) : null,
+      isPublic: r.is_public,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }),
+    toSnake: (e) => prune({
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      date: e.date,
+      end_date: e.endDate,
+      start_time: e.startTime,
+      end_time: e.endTime,
+      is_public: e.isPublic,
+    }),
   },
 }
 
@@ -189,7 +219,7 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
 
     const { data, error } = await sb
       .from('profiles')
-      .select('id, email, full_name, role_id, created_at, roles(id, name, description, permissions)')
+      .select('id, email, full_name, role_id, is_super, created_at, roles(id, name, description, permissions)')
       .eq('id', session.user.id)
       .single()
 
@@ -511,9 +541,88 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
   }
 
   const roles = {
-    list: () => run(sb.from('roles').select('*').order('name'), ROW.role.toCamel),
-    update: (id, patch) =>
-      run(sb.from('roles').update(ROW.role.toSnake(patch)).eq('id', id).select().single(), ROW.role.toCamel),
+    list: async () =>
+      (await run(sb.from('roles').select('*'), ROW.role.toCamel)).sort(compareRoles),
+
+    // checkRole is the President-only permission rule, which the
+    // roles_president_guard trigger also enforces — but as a bare 42501. The
+    // id is the column default (0007), so nothing here mints one.
+    create: (input) => {
+      checkRole({ name: input.name ?? '', ...input })
+      return run(sb.from('roles').insert(ROW.role.toSnake(input)).select().single(), ROW.role.toCamel)
+        .catch(renameConflict(input.name))
+    },
+
+    update: (id, patch) => {
+      checkRole(patch)
+      return run(sb.from('roles').update(ROW.role.toSnake(patch)).eq('id', id).select().single(), ROW.role.toCamel)
+        .catch(renameConflict(patch.name))
+    },
+
+    // profiles.role_id references roles without a cascade, so a role that
+    // someone still holds fails with 23503. toDataError's generic sentence
+    // does not say what to do about it; this does.
+    remove: (id) =>
+      run(sb.from('roles').delete().eq('id', id).select().single(), ROW.role.toCamel).catch((error) => {
+        if (error.code === CODES.CONFLICT) {
+          throw new DataError(
+            CODES.CONFLICT,
+            'Members still hold this role. Move them to another role first.',
+          )
+        }
+        throw error
+      }),
+  }
+
+  /** A 23505 on roles is the unique index on lower(name) from 0007. */
+  function renameConflict(name) {
+    return (error) => {
+      if (error.code === CODES.CONFLICT && name) {
+        throw new DataError(CODES.CONFLICT, `There is already a role called “${String(name).trim()}”.`)
+      }
+      throw error
+    }
+  }
+
+  const events = {
+    // events_read (0008) hides private events from anon, so this is the same
+    // call for the site and the panel; the database decides what comes back.
+    list: async ({ from, to } = {}) => {
+      let query = sb.from('events').select('*')
+      // An event that started before `from` but is still running counts.
+      if (from) query = query.or(`end_date.gte.${from},and(end_date.is.null,date.gte.${from})`)
+      if (to) query = query.lte('date', to)
+      return (await run(query, ROW.event.toCamel)).sort(compareEvents)
+    },
+
+    byId: (id) => run(sb.from('events').select('*').eq('id', id).single(), ROW.event.toCamel),
+
+    create: async (input) => {
+      const clean = normaliseEvent(input)
+      checkEvent({ title: clean.title ?? '', date: clean.date ?? '', ...clean })
+      const { data: auth_ } = await sb.auth.getUser()
+      return run(
+        sb.from('events')
+          .insert({ ...ROW.event.toSnake(clean), created_by: auth_.user?.id ?? null })
+          .select()
+          .single(),
+        ROW.event.toCamel,
+      )
+    },
+
+    // The cross-field rules need the stored row to judge a partial patch —
+    // moving only the end time has to be checked against the start time.
+    update: async (id, patch) => {
+      const clean = normaliseEvent(patch)
+      checkEvent(clean, await events.byId(id))
+      return run(
+        sb.from('events').update(ROW.event.toSnake(clean)).eq('id', id).select().single(),
+        ROW.event.toCamel,
+      )
+    },
+
+    remove: (id) =>
+      run(sb.from('events').delete().eq('id', id).select().single(), ROW.event.toCamel),
   }
 
   return {
@@ -528,5 +637,6 @@ export function createSupabaseAdapter({ url, anonKey } = {}) {
     submissions,
     members,
     roles,
+    events,
   }
 }

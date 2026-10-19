@@ -80,4 +80,59 @@ describe('FormFill', () => {
     expect(await screen.findByText(/closed and is not taking responses/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /send/i })).not.toBeInTheDocument()
   })
+
+  it('stores ticked checkboxes as a list and a chosen option as one answer', async () => {
+    const user = userEvent.setup()
+    const seed = withMember('role-writer')
+    seed.forms.push({
+      id: 'form-x',
+      slug: 'poll',
+      title: 'Poll',
+      description: '',
+      audience: 'internal',
+      isOpen: true,
+      fields: [
+        { id: 'q1', name: 'day', label: 'Which day?', type: 'radio', required: true, options: ['Monday', 'Thursday'] },
+        { id: 'q2', name: 'topics', label: 'Topics', type: 'checkbox', required: true, options: ['R', 'Python', 'SQL'] },
+        { id: 'q3', name: 'useful', label: 'How useful?', type: 'scale', required: false, scaleMin: 1, scaleMax: 5 },
+      ],
+      createdAt: '2026-09-01T09:00:00.000Z',
+    })
+    const client = createMockAdapter({ seed })
+    renderWithProviders(<App />, { client, route: '/forms/form-x/fill' })
+    // Sign in after rendering is what the panel does too; this one only needs
+    // the president's reach to read the answer back.
+    await client.auth.signIn({ email: 'mads@aucegypt.edu', password: DEV_PASSWORD })
+
+    await user.click(await screen.findByLabelText('Thursday'))
+    await user.click(screen.getByLabelText('R'))
+    await user.click(screen.getByLabelText('SQL'))
+    await user.click(screen.getByLabelText('4'))
+    await user.click(screen.getByRole('button', { name: /send/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/sent/i)
+    const [answer] = await client.submissions.list('form-x')
+    expect(answer.payload).toEqual({ day: 'Thursday', topics: ['R', 'SQL'], useful: '4' })
+  })
+
+  it('refuses a required checkbox question left unticked', async () => {
+    const user = userEvent.setup()
+    const seed = withMember('role-writer')
+    seed.forms.push({
+      id: 'form-x',
+      slug: 'poll',
+      title: 'Poll',
+      description: '',
+      audience: 'internal',
+      isOpen: true,
+      fields: [{ id: 'q2', name: 'topics', label: 'Topics', type: 'checkbox', required: true, options: ['R', 'Python'] }],
+      createdAt: '2026-09-01T09:00:00.000Z',
+    })
+    const client = createMockAdapter({ seed })
+    await client.auth.signIn({ email: 'test@mads.auc', password: DEV_PASSWORD })
+    renderWithProviders(<App />, { client, route: '/forms/form-x/fill' })
+
+    await user.click(await screen.findByRole('button', { name: /send/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/please fill in: topics/i)
+  })
 })

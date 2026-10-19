@@ -2,12 +2,22 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { createMockAdapter, DEV_PASSWORD } from './mockAdapter.js'
 import { withMember } from './seed.js'
 import { CODES } from './errors.js'
-import { PERMISSIONS } from './permissions.js'
+import { PERMISSIONS, PRESIDENT_ROLE_ID } from './permissions.js'
 
-/** A client already signed in as a member holding `roleId`. */
+/**
+ * A client already signed in as a member holding `roleId`.
+ *
+ * The President is one fixed account, not a role anyone can be handed, so
+ * asking for it signs in as that account. The seed still carries the extra
+ * test member (as a Writer) so the roster has the same shape either way.
+ */
 async function clientAs(roleId) {
-  const client = createMockAdapter({ seed: withMember(roleId) })
-  await client.auth.signIn({ email: 'test@mads.auc', password: DEV_PASSWORD })
+  const president = roleId === PRESIDENT_ROLE_ID
+  const client = createMockAdapter({ seed: withMember(president ? 'role-writer' : roleId) })
+  await client.auth.signIn({
+    email: president ? 'mads@aucegypt.edu' : 'test@mads.auc',
+    password: DEV_PASSWORD,
+  })
   return client
 }
 
@@ -375,16 +385,16 @@ describe('mock adapter', () => {
 
     it('deletes an account without taking their posts with it', async () => {
       const president = await clientAs('role-president')
-      await president.members.remove('user-mads')
+      await president.members.remove('user-admin')
 
-      expect((await president.members.list()).some((m) => m.id === 'user-mads')).toBe(false)
-      const post = await president.posts.bySlug('datathon-2026-recap')
+      expect((await president.members.list()).some((m) => m.id === 'user-admin')).toBe(false)
+      const post = await president.posts.byId('post-3')
       expect(post.authorId).toBeNull()
     })
 
     it('will not let you delete or demote yourself', async () => {
       const president = await clientAs('role-president')
-      const [me] = (await president.members.list()).filter((m) => m.id === 'user-test')
+      const [me] = (await president.members.list()).filter((m) => m.id === 'user-mads')
 
       await expect(president.members.remove(me.id)).rejects.toMatchObject({
         code: CODES.FORBIDDEN,
@@ -394,17 +404,198 @@ describe('mock adapter', () => {
       ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
     })
 
-    it('will not let the last members:write holder be demoted away', async () => {
+    it('renames a member but leaves their email and super flag alone', async () => {
       const president = await clientAs('role-president')
-      // Clear the two seeded presidents, leaving only the signed-in one.
-      await president.members.update('user-mads', { roleId: 'role-writer' })
-      await president.members.update('user-admin', { roleId: 'role-writer' })
+      const member = await president.members.update('user-test', {
+        fullName: '  Nour Hassan ',
+        email: 'elsewhere@example.com',
+        isSuper: true,
+      })
 
-      // Which then makes their own role the floor: stripping it from the
-      // role itself is the remaining way out, and it is refused too.
+      expect(member).toMatchObject({ fullName: 'Nour Hassan', email: 'test@mads.auc', isSuper: false })
+    })
+
+    it('keeps the President role for the President alone', async () => {
+      const president = await clientAs('role-president')
+
       await expect(
-        president.roles.update('role-president', { permissions: [PERMISSIONS.POSTS_READ] }),
-      ).rejects.toMatchObject({ code: CODES.CONFLICT })
+        president.members.update('user-admin', { roleId: PRESIDENT_ROLE_ID }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+      await expect(
+        president.members.create({ ...NEW_MEMBER, roleId: PRESIDENT_ROLE_ID }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+  })
+
+  describe('roles', () => {
+    it('lists the President first', async () => {
+      const [first] = await client.roles.list()
+      expect(first.id).toBe(PRESIDENT_ROLE_ID)
+    })
+
+    it('lets the President create a role and decide what it can do', async () => {
+      const president = await clientAs('role-president')
+      const role = await president.roles.create({
+        name: 'Outreach Head',
+        description: 'Partnerships.',
+        permissions: [PERMISSIONS.EVENTS_WRITE, PERMISSIONS.FORMS_WRITE],
+      })
+
+      expect(role.id).toMatch(/^role-/)
+      const updated = await president.roles.update(role.id, {
+        permissions: [PERMISSIONS.EVENTS_WRITE],
+      })
+      expect(updated.permissions).toEqual([PERMISSIONS.EVENTS_WRITE])
+    })
+
+    it('grants a member exactly what their role carries, as soon as it changes', async () => {
+      const president = await clientAs('role-president')
+      await president.roles.update('role-writer', {
+        permissions: [PERMISSIONS.POSTS_READ, PERMISSIONS.EVENTS_WRITE],
+      })
+
+      const writer = await clientAs('role-writer')
+      // A fresh client from the same seed would not see the change, so the
+      // writer signs in on the President's store.
+      await president.auth.signIn({ email: 'test@mads.auc', password: DEV_PASSWORD })
+      await expect(
+        president.events.create({ title: 'Study night', date: '2026-12-01' }),
+      ).resolves.toMatchObject({ title: 'Study night' })
+      await expect(
+        writer.events.create({ title: 'Study night', date: '2026-12-01' }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+
+    it('refuses a duplicate name', async () => {
+      const president = await clientAs('role-president')
+      await expect(president.roles.create({ name: 'writer' })).rejects.toMatchObject({
+        code: CODES.CONFLICT,
+      })
+    })
+
+    it('never hands member management to another role', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.roles.update('role-writer', { permissions: [PERMISSIONS.MEMBERS_WRITE] }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+      await expect(
+        president.roles.create({ name: 'Deputy', permissions: [PERMISSIONS.MEMBERS_WRITE] }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+
+    it('will not edit or delete the President role', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.roles.update(PRESIDENT_ROLE_ID, { permissions: [PERMISSIONS.POSTS_READ] }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+      await expect(president.roles.remove(PRESIDENT_ROLE_ID)).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+    })
+
+    it('deletes a role only once nobody holds it', async () => {
+      const president = await clientAs('role-president')
+      await expect(president.roles.remove('role-writer')).rejects.toMatchObject({
+        code: CODES.CONFLICT,
+      })
+
+      await president.members.update('user-test', { roleId: 'role-content' })
+      await president.roles.remove('role-writer')
+      expect((await president.roles.list()).some((r) => r.id === 'role-writer')).toBe(false)
+    })
+
+    it('keeps roles out of reach of everyone else', async () => {
+      const vp = await clientAs('role-vice-president')
+      await expect(vp.roles.create({ name: 'Mine' })).rejects.toMatchObject({
+        code: CODES.FORBIDDEN,
+      })
+      await expect(
+        vp.roles.update('role-vice-president', { permissions: [] }),
+      ).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+  })
+
+  describe('events', () => {
+    it('shows visitors public events only, in date order', async () => {
+      const events = await client.events.list()
+      expect(events.every((e) => e.isPublic)).toBe(true)
+      expect(events.map((e) => e.date)).toEqual([...events.map((e) => e.date)].sort())
+    })
+
+    it('shows a signed-in member the private ones too', async () => {
+      const writer = await clientAs('role-writer')
+      expect((await writer.events.list()).some((e) => !e.isPublic)).toBe(true)
+    })
+
+    it('filters by date range, keeping a multi-day event that is still running', async () => {
+      const events = await client.events.list({ from: '2026-11-08', to: '2026-11-30' })
+      expect(events.map((e) => e.title)).toEqual(['Datathon'])
+    })
+
+    it('lets events:write add, edit and remove an event', async () => {
+      const events = await clientAs('role-events')
+      const created = await events.events.create({
+        title: ' Study night ',
+        date: '2026-12-01',
+        startTime: '18:00',
+        endTime: '',
+      })
+      expect(created).toMatchObject({ title: 'Study night', endTime: null, isPublic: true })
+
+      const moved = await events.events.update(created.id, { date: '2026-12-02' })
+      expect(moved.date).toBe('2026-12-02')
+
+      await events.events.remove(created.id)
+      await expect(events.events.byId(created.id)).rejects.toMatchObject({ code: CODES.NOT_FOUND })
+    })
+
+    it('refuses an event that ends before it starts', async () => {
+      const events = await clientAs('role-events')
+      await expect(
+        events.events.create({ title: 'Backwards', date: '2026-12-02', endDate: '2026-12-01' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+      await expect(
+        events.events.update('event-1', { endTime: '16:00' }),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    it('keeps a role without events:write from changing the calendar', async () => {
+      const writer = await clientAs('role-writer')
+      await expect(writer.events.remove('event-1')).rejects.toMatchObject({ code: CODES.FORBIDDEN })
+    })
+  })
+
+  describe('form rules', () => {
+    const base = { title: 'Poll', slug: 'poll' }
+    const ask = (field) => ({ ...base, fields: [{ id: 'q', name: 'q', label: 'Q', ...field }] })
+
+    it('needs options on every choice type, and no option twice', async () => {
+      const president = await clientAs('role-president')
+      for (const type of ['radio', 'checkbox', 'select']) {
+        await expect(president.forms.create(ask({ type, options: [] }))).rejects.toMatchObject({
+          code: CODES.INVALID,
+        })
+      }
+      await expect(
+        president.forms.create(ask({ type: 'radio', options: ['A', 'A'] })),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+    })
+
+    it('keeps a linear scale inside Google Forms’ bounds', async () => {
+      const president = await clientAs('role-president')
+      await expect(
+        president.forms.create(ask({ type: 'scale', scaleMin: 1, scaleMax: 11 })),
+      ).rejects.toMatchObject({ code: CODES.INVALID })
+      await expect(
+        president.forms.create(ask({ type: 'scale', scaleMin: 0, scaleMax: 10 })),
+      ).resolves.toMatchObject({ slug: 'poll' })
+    })
+
+    it('refuses a type the renderers cannot draw', async () => {
+      const president = await clientAs('role-president')
+      await expect(president.forms.create(ask({ type: 'file' }))).rejects.toMatchObject({
+        code: CODES.INVALID,
+      })
     })
   })
 

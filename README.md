@@ -103,8 +103,22 @@ exists`) so re-running is harmless.
 
 ### Managing accounts
 
-A President manages the whole roster from **Members**: add someone with a role
-and a temporary password, change anyone's role, delete an account outright.
+**mads@aucegypt.edu is the President, and that is the one fixed point.** It is
+the only account that can hold the President role, the only one that can manage
+members and roles, and it cannot be demoted, deleted, or have its permissions
+edited from the panel. Handing the presidency over each year means changing
+that account's password (`MADS_PASSWORD` in `.env`, then `npm run db:seed`),
+not creating a new one.
+
+Everything else is the President's to define:
+
+- **Members** — add someone with a role and a temporary password, rename them,
+  change their role, delete their account outright.
+- **Roles** — create, rename and delete roles (the heads), and tick what each
+  one may do, feature by feature: the blog, the syllabus archive, forms
+  (create and edit, read responses), the calendar (add, edit and remove
+  events), and the newsletter list. A "who can do what" table turns it around
+  and lists, per feature, the roles and the people who have it.
 
 Changing a role is a plain `UPDATE` through RLS. Adding and deleting are not —
 they write to `auth.users`, which only the service-role key may touch, and that
@@ -126,9 +140,16 @@ and this is the one job the Management API's SQL endpoint cannot do. No secrets
 to configure: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
 are injected into every function automatically.
 
-Two rules sit under all of this, as triggers in `0004_member_admin.sql` rather
-than in the function, so they hold on any path into the database:
+The rules sit under all of this as triggers, in `0004_member_admin.sql` and
+`0007_president_and_roles.sql`, rather than in the function, so they hold on
+any path into the database:
 
+- **The President is fixed.** Only the `is_super` profile holds
+  `role-president`; nobody is moved into it or out of it; it cannot be deleted,
+  even with the service-role key; and the role's permission list changes only
+  by migration.
+- **Member management is never delegated.** No role but President may carry
+  `members:write`.
 - **Nobody changes their own role.** Demoting yourself locks you out of the page
   that could undo it.
 - **Someone must always hold `members:write`** — enforced on deleting a profile,
